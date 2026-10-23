@@ -21,8 +21,9 @@ Vite dev proxy ──────────────► FastAPI (8000)
 | 资产 | 位置 | 规模 / 说明 |
 | --- | --- | --- |
 | 考研词库 | `server/data/kaoyan_vocab.txt` | 公共词库去重后 5,064 条，含基础释义 |
-| 熟词僻义 | `server/data/rare_meanings.json` | 27 个高频熟词僻义，另补充 6 个常用词 |
-| 真题切片 | `server/data/exam_slices.json` | 2023 / 2024 英语一 Text 1，8 句、3 题 |
+| 熟词僻义 | `server/data/rare_meanings.json` | 27 个高频熟词僻义，另补充 6 个常用词，共 33 条 |
+| 示例文章 | `server/data/exam_slices.json` | 2023 / 2024 英语一 Text 1，8 句、3 题 |
+| 导入真题 | `exam_passages` / `exam_sentences` / `exam_questions` | 2023 / 2024 英语一 Text 1–4，8 篇、40 题、145 句 |
 | 陷阱规则 | `server/seed.py` | 8 条（核心六类 + 过度推理 / 张冠李戴） |
 | 用户单词本 | `user_vocab_book` | 生词、语境、SM-2 参数、下次复习 |
 | 练习记录 | `practice_records` | 答案、正误、陷阱类型、时间 |
@@ -153,7 +154,7 @@ PDF URL / 本地 PDF / 原始文本
 
 ## 6. 数据库
 
-`server/db.py` 定义 8 张表：
+`server/db.py` 定义 9 张表：
 
 - `syllabus_vocabulary`
 - `exam_passages`
@@ -163,6 +164,7 @@ PDF URL / 本地 PDF / 原始文本
 - `user_vocab_book`
 - `practice_records`
 - `agent_runs`
+- `sentence_breakdowns`
 
 `user_vocab_book` 预留 `easiness`、`interval_days`、`repetition`，可以继续升级为完整 SM-2；当前复习反馈采用“记住则间隔翻倍、忘记回到 1 天”的简化策略。
 

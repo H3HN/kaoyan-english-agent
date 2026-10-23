@@ -16,7 +16,8 @@ cd server
 首次启动会初始化 `data/app.db` 并导入：
 
 - 考研词库 5,064 条（公共词库去重并补充内置真题词，来源见 `data/LICENSE-vocabulary`）
-- 2023 / 2024 英语一 Text 1 共 8 个句子切片、3 道题
+- 首次 seed：2 篇示例文章、8 个句子切片、3 道题
+- 当前本地库另导入：2023 / 2024 英语一 Text 1–4 共 8 篇、40 题、145 句
 - 8 条陷阱规则
 - 7 个演示单词与 20 条练习记录
 
@@ -80,7 +81,7 @@ LLM_MODEL=deepseek-chat
 
 ## 数据说明
 
-词库来自 [KyleBing/english-vocabulary](https://github.com/KyleBing/english-vocabulary)（BSD-3-Clause），仅用于课程演示；真题切片来自项目内置示例。真题频次为**当前切片语料内的出现次数**，不是 2010–2026 全量统计。当前去重后 5,064 条，接近大纲 5,500 词规模；全量真题需要继续导入，表结构已预留。
+词库来自 [KyleBing/english-vocabulary](https://github.com/KyleBing/english-vocabulary)（BSD-3-Clause），仅用于课程演示；真题来自公开 PDF 导入 + 2 篇内置示例。真题频次为**当前 153 个句子切片内的出现次数**，不是 2010–2026 全量统计。当前去重后 5,064 条，接近大纲 5,500 词规模；全量真题需要继续导入，表结构已预留。
 
 ## 前端
 

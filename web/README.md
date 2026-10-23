@@ -41,7 +41,7 @@ npm run preview
 - 首页调用 `/api/meta` 显示真实的词条、切片与陷阱数量。
 - 长难句页调用 `/api/workflow/sentence`，渲染 `tool_trace`、大纲词核验与真题溯源。
 - 选项页提交后调用 `/api/workflow/options`，后端写入错题并返回陷阱类型与出处。
-- AI 对话调用 `/api/workflow/chat`，应答由 FastAPI 工作流生成；后端不可用时自动退回本地示例。
+- AI 对话调用 `/api/workflow/chat`，应答由 FastAPI 工作流生成；后端不可用时显示错误提示，不再使用写死的本地示例。
 - 单词本通过 `/api/state`、`/api/wordbook` 与 SQLite 同步；`localStorage` 仅作离线兜底。
 
 AI 对话调用 `/api/workflow/chat`：FastAPI 先执行工具检索；长难句、选项、核心词、主旨等证据敏感问题直接返回确定性结果，熟词僻义与复习计划等开放讲解才使用 DeepSeek；回答底部标记“DeepSeek 生成”。后端未配置 Key 或调用失败时自动回退。`web/src/lib/api.ts` 是唯一 API 客户端。

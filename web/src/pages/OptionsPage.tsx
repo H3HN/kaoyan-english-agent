@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   ArrowRight,
   CheckCircle2,
@@ -6,19 +6,24 @@ import {
   ChevronRight,
   Lightbulb,
   MapPin,
+  Plus,
   Target,
   XCircle,
 } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
+import { ExamImportForm } from '../components/ExamImportForm'
 import { PageHero } from '../components/PageHero'
 import { CitationList, ToolTrace } from '../components/ToolTrace'
 import { SectionHeader } from '../components/SectionHeader'
 import { Tag, toneStyles, type Tone } from '../components/Tag'
+import { useToast } from '../components/Toast'
 import { getPassage, questions, type OptionKey } from '../data/content'
-import { api, type OptionWorkflow } from '../lib/api'
+import { api, type FullQuestion, type OptionWorkflow } from '../lib/api'
 import { useAppStore } from '../store/AppStore'
 
 const optionKeys: OptionKey[] = ['A', 'B', 'C', 'D']
+
+type OptionQuestion = (typeof questions)[number] & { passage?: string }
 
 const borderMap: Record<Tone, string> = {
   blue: 'border-l-blue-500',
@@ -42,7 +47,11 @@ function trapTone(trap: string): Tone {
 }
 
 export default function OptionsPage() {
+  const [allQuestions, setAllQuestions] =
+    useState<OptionQuestion[]>(questions)
   const [activeId, setActiveId] = useState(questions[0].id)
+  const [importOpen, setImportOpen] = useState(false)
+  const [searchParams, setSearchParams] = useSearchParams()
   const [selected, setSelected] = useState<OptionKey | null>(null)
   const [submitted, setSubmitted] = useState<{
     isCorrect: boolean
@@ -52,12 +61,78 @@ export default function OptionsPage() {
   const [agentFeedback, setAgentFeedback] = useState<OptionWorkflow | null>(null)
   const [agentError, setAgentError] = useState(false)
   const { addRecord } = useAppStore()
+  const toast = useToast()
 
-  const question = questions.find((item) => item.id === activeId) ?? questions[0]
+  useEffect(() => {
+    if (searchParams.get('import') === '1') setImportOpen(true)
+    api
+      .getQuestionsFull()
+      .then((response) => {
+        const builtinIds = new Set(questions.map((item) => item.id))
+        const extra = response.items.filter(
+          (item) => !builtinIds.has(item.id),
+        ) as OptionQuestion[]
+        if (extra.length === 0) return
+        setAllQuestions((prev) => {
+          const existing = new Set(prev.map((item) => item.id))
+          return [...prev, ...extra.filter((item) => !existing.has(item.id))]
+        })
+      })
+      .catch(() => {})
+  }, [searchParams])
+
+  const openImport = () => {
+    setImportOpen(true)
+    setSearchParams({ import: '1' })
+  }
+
+  const closeImport = () => {
+    setImportOpen(false)
+    setSearchParams({})
+  }
+
+  const finishImport = (firstId?: string) => {
+    if (firstId) setActiveId(firstId)
+    setSelected(null)
+    setSubmitted(null)
+    setShowPassage(false)
+    setAgentFeedback(null)
+    setAgentError(false)
+    setImportOpen(false)
+    setSearchParams({})
+  }
+
+  const handleImported = (imported: FullQuestion) => {
+    setAllQuestions((prev) =>
+      prev.some((item) => item.id === imported.id)
+        ? prev
+        : [...prev, imported as OptionQuestion],
+    )
+    finishImport(imported.id)
+    toast('新真题已加入题库，可直接作答。', 'success')
+  }
+
+  const handleBatchImported = (imported: FullQuestion[]) => {
+    setAllQuestions((prev) => {
+      const existing = new Set(prev.map((item) => item.id))
+      return [
+        ...prev,
+        ...imported
+          .filter((item) => !existing.has(item.id))
+          .map((item) => item as OptionQuestion),
+      ]
+    })
+    finishImport(imported[0]?.id)
+    toast(`已导入 ${imported.length} 题。`, 'success')
+  }
+
+  const question = allQuestions.find((item) => item.id === activeId) ?? allQuestions[0]
   const passage = getPassage(question.passageId)
+  const passageText =
+    question.passage || passage?.passage || question.sourceSentence
   const questionIndex = useMemo(
-    () => questions.findIndex((item) => item.id === question.id),
-    [question.id],
+    () => allQuestions.findIndex((item) => item.id === question.id),
+    [allQuestions, question.id],
   )
 
   const handleSelectQuestion = (id: string) => {
@@ -91,20 +166,37 @@ export default function OptionsPage() {
       <PageHero
         eyebrow="OPTION LAB"
         title="选项陷阱分析"
-        subtitle="左边回到原文，右边拆开四个选项。先识别题型，再定位依据，最后用陷阱类型完成排除。"
         actions={
-          <span className="inline-flex items-center gap-2 rounded-lg border border-white/15 bg-white/5 px-4 py-2.5 text-sm font-medium text-white">
-            <Target className="h-4 w-4" />
-            第 {questionIndex + 1} / {questions.length} 题
-          </span>
+          <>
+            <button
+              type="button"
+              onClick={openImport}
+              className="inline-flex items-center gap-2 rounded-lg bg-white px-4 py-2.5 text-sm font-semibold text-slate-900 transition-colors hover:bg-slate-100"
+            >
+              <Plus className="h-4 w-4" />
+              添加真题
+            </button>
+            <span className="inline-flex items-center gap-2 rounded-lg border border-white/15 bg-white/5 px-4 py-2.5 text-sm font-medium text-white">
+              <Target className="h-4 w-4" />
+              第 {questionIndex + 1} / {allQuestions.length} 题
+            </span>
+          </>
         }
       />
+
+      {importOpen ? (
+        <ExamImportForm
+          onClose={closeImport}
+          onImported={handleImported}
+          onBatchImported={handleBatchImported}
+        />
+      ) : null}
 
       <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
         <span className="px-1 text-[11px] font-medium text-slate-400">
           真题选择
         </span>
-        {questions.map((item) => {
+        {allQuestions.map((item) => {
           const isActive = item.id === question.id
           return (
             <button
@@ -190,17 +282,10 @@ export default function OptionsPage() {
               {showPassage ? (
                 <div className="mt-3 rounded-lg border border-slate-200 bg-white p-4">
                   <p className="font-serif text-[13.5px] leading-7 text-slate-600">
-                    {passage?.passage}
+                    {passageText}
                   </p>
                 </div>
               ) : null}
-
-              <div className="mt-5 flex items-start gap-2 rounded-lg bg-blue-50/70 px-3.5 py-3">
-                <Lightbulb className="mt-0.5 h-3.5 w-3.5 shrink-0 text-blue-500" />
-                <p className="text-[11px] leading-relaxed text-blue-900/70">
-                  先自己定位，再对照右侧分析。不要把“看起来像原文”的选项当成同义替换。
-                </p>
-              </div>
             </div>
           </div>
 
@@ -248,7 +333,6 @@ export default function OptionsPage() {
         <div>
           <SectionHeader
             title="四个选项，逐一验伪"
-            description="点击卡片标记你的答案，再提交查看结果。"
             action={
               <span className="text-[11px] text-slate-400">
                 {question.correctAnswer} 为正确项
@@ -371,7 +455,6 @@ export default function OptionsPage() {
       <section>
         <SectionHeader
           title="解题路径"
-          description="从题干到答案，固定成一条可复用的检查链。"
         />
         <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
           <div className="grid gap-3 md:grid-cols-5">

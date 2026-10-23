@@ -24,6 +24,27 @@ cd server
 
 `syllabus_vocabulary`、`exam_passages`、`exam_sentences`、`exam_questions`、`trap_rules`、`user_vocab_book`、`practice_records`、`agent_runs`。
 
+## 真题自动导入
+
+`POST /api/exams/auto-import` 支持：
+
+- 公开 PDF URL：`{"url": "...pdf", "year": 2024, "exam_type": "英语一", "text_number": 1, "answer_key": "21-25 BCDAB"}`
+- 原始文本：把 `url` 换成 `text`
+- 自动抽取 Text N 的文章、5 道题与选项
+- 提供答案序列时按序列覆盖；未提供时使用模型推断，返回 `answer_source=inferred`
+- 批量生成选项陷阱分析；结果写入 SQLite
+
+命令行入口：
+
+```bash
+python scripts/auto_import.py --url https://example.com/2024.pdf \
+  --year 2024 --exam 英语一 --text-number 1 --answer-key 21-25BCDAB
+```
+
+也可以 `--pdf` 传本地 PDF，或 `--text-file` 传纯文本。
+
+> 不内置、不再分发真题 PDF。PDF 由使用者提供；请遵守来源站点的版权与使用条款。推荐用于已获授权的公开教学 PDF。
+
 ## 工具
 
 | 工具 | 作用 |
@@ -67,3 +88,28 @@ cd ../web
 npm run dev
 # http://localhost:5173
 ```
+
+
+## 自动导入真题
+
+支持三种输入：公开 PDF URL、本地 PDF、纯文本。后端会抽取 Text N，调用 DeepSeek 结构化文章/题目/答案，并批量生成选项分析。
+
+```bash
+# 公开 PDF
+python scripts/auto_import.py --url https://example.com/2024.pdf \
+  --year 2024 --exam 英语一 --text-number 1 --answer-key BCDAB
+
+# 本地 PDF
+python scripts/auto_import.py --pdf ~/2024英语一.pdf \
+  --year 2024 --text-number 1
+
+# 纯文本
+python scripts/auto_import.py --text-file passage.txt \
+  --year 2024 --text-number 1
+```
+
+说明：
+
+- 不提供答案序列时，模型会推断答案，返回 `answer_source=inferred`，需要在页面核对。
+- 不内置、不再分发真题 PDF；URL 与文件由使用者提供。
+- 自动导入依赖 DeepSeek，`server/.env` 中必须配置 `LLM_API_KEY`。

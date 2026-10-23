@@ -125,7 +125,6 @@ export default function SentencePage() {
       <PageHero
         eyebrow="SENTENCE STUDIO"
         title="长难句拆解"
-        subtitle="先把结构看清楚，再谈翻译。主干、从句、修饰各归其位，最后才组装成一句自然中文。"
         actions={
           <Link
             to="/options"
@@ -187,9 +186,6 @@ export default function SentencePage() {
             </Tag>
             <span className="text-[11px] text-slate-400">{analysis.source}</span>
           </div>
-          <span className="text-[11px] text-slate-400">
-            先读结构，再看下面五步
-          </span>
         </div>
 
         <div className="py-7">
@@ -272,9 +268,6 @@ export default function SentencePage() {
               <h3 className="text-sm font-semibold text-slate-900">
                 第 {activeStep + 1} 步 · {STEP_LABELS[activeStep].title}
               </h3>
-              <span className="text-[11px] text-slate-400">
-                {analysis.isLong ? '长难句拆解路径' : '简单句结构确认'}
-              </span>
             </div>
 
             {activeStep === 0 ? (
@@ -353,9 +346,6 @@ export default function SentencePage() {
                     </p>
                   </div>
                 ))}
-                <p className="pt-2 text-[11px] leading-relaxed text-slate-400">
-                  按中文语序重组，不逐词硬译。完整译文见右下方。
-                </p>
               </div>
             ) : null}
 
@@ -402,7 +392,6 @@ export default function SentencePage() {
       <section>
         <SectionHeader
           title="Agent 工具链"
-          description="每一次拆解都由后端真实执行词库核查与真题检索，结果可追溯。"
           action={
             <span className="inline-flex items-center gap-1.5 text-[11px] text-slate-400">
               <Database className="h-3.5 w-3.5" />
@@ -502,7 +491,6 @@ export default function SentencePage() {
         <div className="lg:col-span-7">
           <SectionHeader
             title="语法成分剥离"
-            description="从主干向外逐层展开，每一层都回答“它修饰谁”。"
             action={
               <span className="inline-flex items-center gap-1.5 text-[11px] text-slate-400">
                 <Network className="h-3.5 w-3.5" />
@@ -527,7 +515,7 @@ export default function SentencePage() {
 
         <div className="space-y-6 lg:col-span-5">
           <div>
-            <SectionHeader title="规范译文" description="先忠实，再通顺。" />
+            <SectionHeader title="规范译文" />
             <div className="relative overflow-hidden rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
               <span className="absolute inset-y-0 left-0 w-1 bg-blue-500" />
               <Quote className="h-4 w-4 text-blue-200" />
@@ -538,7 +526,7 @@ export default function SentencePage() {
           </div>
 
           <div>
-            <SectionHeader title="名师考点" description="考试真正会考的地方。" />
+            <SectionHeader title="名师考点" />
             <div className="relative overflow-hidden rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
               <span className="absolute inset-y-0 left-0 w-1 bg-amber-500" />
               <div className="space-y-3">

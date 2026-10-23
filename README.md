@@ -5,7 +5,7 @@
 | 目录 | 形态 | 说明 |
 | --- | --- | --- |
 | `kaoyan_agent/` | Streamlit 单体应用 | 早期可运行 MVP，含规则拆解、单词本、学习记录与 LLM 对话降级 |
-| `server/` | FastAPI + SQLite | 领域知识库、四个工具、三类工作流与学习状态持久化 |
+| `server/` | FastAPI + SQLite | 领域知识库、四个工具、三类工作流、PDF 自动导入与学习状态持久化 |
 | `web/` | React 19 + Vite + Tailwind CSS v4 | 统一设计系统的新前端工作台，覆盖 8 个页面，通过 `/api` 调用后端 |
 
 ## 启动 Streamlit 版本
@@ -62,6 +62,7 @@ npm run preview
 - 后端：SQLite 领域库、`check_syllabus_vocab` / `search_past_exams` / `add_to_vocab_book` / `record_trap_mistake` 四个工具，以及句子 / 选项 / 对话三类工作流。
 - 状态：单词本与答题记录写入 SQLite；前端仍保留 `localStorage` 作为离线兜底。
 - 生成层：工具检索与状态写入是确定性的；配置 `LLM_API_KEY` 后由 DeepSeek 负责讲解，`tool_trace` 与真题出处始终来自工具层，LLM 失败自动回退。
+- 真题导入：选项分析页「添加真题」支持手动录入，也支持公开 PDF URL 自动抽取文章/题目/选项；答案序列可选，未提供时标记为 AI 推断。
 - 数据：公共考研词库（BSD-3-Clause，去重后 5,064 条）与项目内置真题切片；频次是**当前切片语料内的出现次数**，不是 2010–2026 全量统计。
 
 ## 文档

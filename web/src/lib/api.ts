@@ -85,6 +85,62 @@ export interface OptionWorkflow {
   tool_trace: ToolCall[]
 }
 
+export interface FullQuestion {
+  id: string
+  number: number
+  questionType: string
+  content: string
+  options: Record<string, string>
+  correctAnswer: string
+  analysis: Record<string, { trapType: string; explanation: string }>
+  steps: string[]
+  location: string
+  sourceSentence: string
+  sourceHighlights: string[]
+  passage: string
+  passageId: string
+  year: number
+  examType: string
+  textNumber: number
+}
+
+export interface ImportExamPayload {
+  year: number
+  exam_type: string
+  text_number: number
+  passage: string
+  question_type: string
+  content: string
+  options: Record<string, string>
+  correct_answer: string
+}
+
+export interface AutoImportPayload {
+  url?: string
+  text?: string
+  year: number
+  exam_type: string
+  text_number: number
+  answer_key?: string
+}
+
+export interface AutoImportResponse {
+  ok: boolean
+  passage_id: string
+  question_ids: string[]
+  analysis_source: 'deepseek' | 'fallback'
+  answer_source: 'provided' | 'inferred'
+  questions: FullQuestion[]
+}
+
+export interface ImportExamResponse {
+  ok: boolean
+  question_id: string
+  passage_id: string
+  analysis_source: 'deepseek' | 'fallback'
+  question: FullQuestion
+}
+
 export interface ChatSection {
   title: string
   body?: string
@@ -159,6 +215,18 @@ export const api = {
   getMeta: () => request<MetaInfo>('/meta'),
   getState: () => request<AppState>('/state'),
   getKnowledge: () => request<KnowledgeResponse>('/knowledge'),
+  getQuestionsFull: () => request<{ items: FullQuestion[] }>('/questions/full'),
+  importExam: (payload: ImportExamPayload) =>
+    request<ImportExamResponse>('/exams/import', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
+  autoImportExam: (payload: AutoImportPayload) =>
+    request<AutoImportResponse>('/exams/auto-import', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
 
   runSentence: (sentenceId: string) =>
     request<SentenceWorkflow>('/workflow/sentence', {
@@ -175,10 +243,10 @@ export const api = {
       }),
     }),
 
-  chat: (message: string) =>
+  chat: (message: string, contextId = '2024_en1_t1') =>
     request<ChatWorkflow>('/workflow/chat', {
       method: 'POST',
-      body: JSON.stringify({ message }),
+      body: JSON.stringify({ message, context_id: contextId }),
     }),
 
   addWord: (payload: {

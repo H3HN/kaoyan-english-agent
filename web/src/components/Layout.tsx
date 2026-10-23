@@ -141,15 +141,6 @@ function SidebarContent({
         </nav>
       </div>
 
-      <div className="mt-6 rounded-lg bg-slate-50 px-3 py-3">
-        <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-slate-400">
-          今日提示
-        </p>
-        <p className="mt-1.5 text-[11px] leading-relaxed text-slate-500">
-          先拆结构，再谈翻译。把每一个从句都放回它修饰的中心词。
-        </p>
-      </div>
-
       <div className="mt-auto pt-6">
         <div className="border-t border-slate-200 pt-4">
           <p className="text-[11px] text-slate-500">福大智联 · 2026 秋</p>

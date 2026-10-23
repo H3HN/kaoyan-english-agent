@@ -3,7 +3,6 @@ import {
   ArrowUpRight,
   BookOpen,
   CalendarDays,
-  ChevronRight,
   GitBranch,
   Languages,
   RotateCcw,
@@ -12,7 +11,6 @@ import {
   Wrench,
   Target,
 } from 'lucide-react'
-import { PageHero } from '../components/PageHero'
 import { Tag } from '../components/Tag'
 import { api, type ChatWorkflow, type Citation, type ToolCall } from '../lib/api'
 import { useAppStore } from '../store/AppStore'
@@ -36,12 +34,26 @@ interface ChatMessage {
   llmUsed?: boolean
 }
 
+const CONTEXTS = [
+  {
+    id: '2024_en1_t1',
+    label: '2024 英语一 · Text 1',
+    longSentences: 3,
+    questions: 2,
+  },
+  {
+    id: '2023_en1_t1',
+    label: '2023 英语一 · Text 1',
+    longSentences: 4,
+    questions: 1,
+  },
+] as const
+
 const initialMessages: ChatMessage[] = [
   {
     id: 'welcome',
     role: 'assistant',
-    intro:
-      '你好，我是研英 Agent。你可以把正在读的句子、做错的选项，或者这一周的复习安排直接丢给我。我会按考研阅读的范式拆开讲，而不是只给一个结论。',
+    intro: '把正在读的句子、做错的选项或复习计划发给我。',
   },
 ]
 
@@ -374,6 +386,8 @@ export default function ChatPage() {
   const scrollRef = useRef<HTMLDivElement>(null)
   const counter = useRef(0)
   const { connected, refresh } = useAppStore()
+  const [contextId, setContextId] = useState<string>(CONTEXTS[0].id)
+  const context = CONTEXTS.find((item) => item.id === contextId) ?? CONTEXTS[0]
   const toast = useToast()
 
   useEffect(() => {
@@ -398,7 +412,7 @@ export default function ChatPage() {
     setTyping(true)
 
     try {
-      const reply: ChatWorkflow = await api.chat(text)
+      const reply: ChatWorkflow = await api.chat(text, contextId)
       counter.current += 1
       setMessages((prev) => [
         ...prev,
@@ -442,29 +456,25 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <PageHero
-        eyebrow="AI COPILOT"
-        title="AI 对话"
-        subtitle="把 Agent 当成一位随叫随到的辅导老师。左侧是常用动作，右侧保留完整上下文与结构化回答。"
-        actions={
-          <span className="hidden items-center gap-2 rounded-lg border border-white/15 bg-white/5 px-4 py-2.5 text-sm font-medium text-white lg:inline-flex">
-            <Sparkles className="h-4 w-4 text-violet-300" />
-            Copilot Workspace
-          </span>
-        }
-      />
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+            AI COPILOT
+          </p>
+          <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900">
+            AI 对话
+          </h1>
+        </div>
+        <Tag tone="slate">{context.label}</Tag>
+      </div>
 
-      <div className="grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
-        <aside className="order-2 space-y-4 lg:order-1">
+      <div className="grid gap-5 lg:h-[calc(100dvh-130px)] lg:grid-cols-[280px_minmax(0,1fr)]">
+        <aside className="order-2 space-y-4 lg:order-1 lg:h-full lg:overflow-y-auto lg:pr-1 scrollbar-thin">
           <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-semibold text-slate-900">快捷提问</h2>
-              <span className="text-[10px] text-slate-400">Prompt</span>
             </div>
-            <p className="mt-1 text-[11px] leading-relaxed text-slate-400">
-              点击直接发送，或作为提问模板继续补充。
-            </p>
             <div className="mt-3 space-y-1.5">
               {presetPrompts.map((preset) => {
                 const Icon = preset.icon
@@ -483,9 +493,6 @@ export default function ChatPage() {
                       <span className="block text-xs font-medium text-slate-700">
                         {preset.title}
                       </span>
-                      <span className="mt-0.5 block text-[10px] leading-relaxed text-slate-400">
-                        {preset.description}
-                      </span>
                     </span>
                     <ArrowUpRight className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-300 opacity-0 transition-opacity group-hover:opacity-100" />
                   </button>
@@ -501,35 +508,29 @@ export default function ChatPage() {
               </h2>
               <Tag tone="blue">已载入</Tag>
             </div>
-            <p className="mt-3 text-xs font-medium text-slate-700">
-              2024 英语一 · Text 1
-            </p>
-            <p className="mt-1 text-[11px] leading-relaxed text-slate-400">
-              人工智能的兴起与就业争议
-            </p>
+            <select
+              value={contextId}
+              onChange={(event) => {
+                setContextId(event.target.value)
+                toast('上下文已切换。', 'info')
+              }}
+              aria-label="选择上下文"
+              className="mt-3 w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-xs font-medium text-slate-700 outline-none transition-colors focus:border-slate-300"
+            >
+              {CONTEXTS.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
             <div className="mt-3 flex flex-wrap gap-1.5">
-              <Tag tone="emerald">长难句 3</Tag>
-              <Tag tone="amber">题目 2</Tag>
-              <Tag tone="cyan">大纲词 12</Tag>
+              <Tag tone="emerald">长难句 {context.longSentences}</Tag>
+              <Tag tone="amber">题目 {context.questions}</Tag>
             </div>
-            <div className="mt-4 border-t border-slate-100 pt-3">
-              <p className="text-[10px] leading-relaxed text-slate-400">
-                回答会优先引用当前文章。你也可以直接粘贴新段落覆盖上下文。
-              </p>
-            </div>
-          </div>
-
-          <div className="rounded-xl border border-violet-100 bg-violet-50/60 p-4">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-violet-600">
-              提示
-            </p>
-            <p className="mt-1.5 text-[11px] leading-relaxed text-violet-900/70">
-              连续追问时，尽量引用原句或选项字母。上下文越具体，拆解越稳定。
-            </p>
           </div>
         </aside>
 
-        <section className="order-1 flex h-[calc(100dvh-340px)] min-h-[380px] flex-col overflow-hidden lg:order-2 rounded-xl border border-slate-200 bg-white shadow-sm lg:h-[calc(100dvh-320px)] lg:max-h-[760px] lg:min-h-[440px]">
+        <section className="order-1 flex h-[calc(100dvh-200px)] min-h-[420px] flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm lg:order-2 lg:h-full">
           <header className="flex items-center justify-between gap-3 border-b border-slate-200 px-5 py-3.5">
             <div className="flex items-center gap-3">
               <span className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-slate-800 text-white">
@@ -545,9 +546,6 @@ export default function ChatPage() {
                     {connected ? '后端已连接' : '本地示例'}
                   </Tag>
                 </div>
-                <p className="mt-0.5 text-[10px] text-slate-400">
-                  长难句 · 选项 · 词汇 · 复习计划
-                </p>
               </div>
             </div>
             <button
@@ -655,20 +653,9 @@ export default function ChatPage() {
               <p className="text-[10px] text-slate-400">
                 Enter 发送 · Shift + Enter 换行
               </p>
-              <p className="text-[10px] text-slate-400">
-                Tool Trace 由 FastAPI 执行，DeepSeek 负责讲解
-              </p>
             </div>
           </div>
         </section>
-      </div>
-
-      <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-5 py-3.5 text-[11px] text-slate-400">
-        <span className="inline-flex items-center gap-1.5">
-          <ChevronRight className="h-3.5 w-3.5" />
-          回答会保留在当前会话中，刷新页面后重置
-        </span>
-        <span>SQLite 领域库 · DeepSeek 生成</span>
       </div>
     </div>
   )

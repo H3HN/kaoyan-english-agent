@@ -92,7 +92,6 @@ export default function ReportPage() {
       <PageHero
         eyebrow="LEARNING ANALYTICS"
         title="学习报告"
-        subtitle="不只看正确率，也看错误集中在哪。把每一次答题记录变成下一轮训练的输入。"
         actions={
           <Link
             to="/options"
@@ -108,14 +107,12 @@ export default function ReportPage() {
         <StatCard
           label="总练习题数"
           value={total}
-          hint="来自选项分析与真题练习"
           icon={Target}
           accent="blue"
         />
         <StatCard
           label="正确题数"
           value={correct}
-          hint="已记录为正确的答案"
           icon={CheckCircle2}
           accent="emerald"
         />
@@ -129,7 +126,6 @@ export default function ReportPage() {
         <StatCard
           label="待复习单词"
           value={dueWords.length}
-          hint="到期单词优先处理"
           icon={BookMarked}
           accent="amber"
         />
@@ -141,7 +137,6 @@ export default function ReportPage() {
             <section className="lg:col-span-2">
               <SectionHeader
                 title="各题型正确率"
-                description="正确率低于 70% 的题型会在右侧标为薄弱项。"
                 action={
                   <span className="inline-flex items-center gap-1.5 text-[11px] text-slate-400">
                     <BarChart3 className="h-3.5 w-3.5" />
@@ -196,7 +191,6 @@ export default function ReportPage() {
             <section>
               <SectionHeader
                 title="薄弱环节"
-                description="按正确率从低到高排序。"
               />
               <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
                 {weakTypes.length > 0 ? (
@@ -251,7 +245,6 @@ export default function ReportPage() {
             <section>
               <SectionHeader
                 title="备考建议"
-                description="根据当前记录自动生成，不是通用鸡汤。"
               />
               <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
                 <div className="space-y-3.5">
@@ -265,20 +258,12 @@ export default function ReportPage() {
                       </p>
                     </div>
                   ))}
-                </div>
-                <div className="mt-5 flex items-start gap-2 rounded-lg bg-blue-50/70 px-3.5 py-3">
-                  <Lightbulb className="mt-0.5 h-3.5 w-3.5 shrink-0 text-blue-500" />
-                  <p className="text-[11px] leading-relaxed text-blue-900/70">
-                    建议每次只改一个变量：要么限时，要么专项，要么复盘。不要同时追求所有指标。
-                  </p>
-                </div>
-              </div>
+                </div>              </div>
             </section>
 
             <section>
               <SectionHeader
                 title="近 7 天练习量"
-                description="用练习频次检查节奏，而不是只盯正确率。"
                 action={
                   <span className="inline-flex items-center gap-1.5 text-[11px] text-slate-400">
                     <CalendarDays className="h-3.5 w-3.5" />
@@ -329,7 +314,6 @@ export default function ReportPage() {
           <section>
             <SectionHeader
               title="最近练习"
-              description="按时间倒序，保留每次选择的答案。"
             />
             <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
               <div className="hidden grid-cols-[1fr_150px_90px_100px] border-b border-slate-100 bg-slate-50/70 px-5 py-3 text-[11px] font-medium text-slate-400 sm:grid">
@@ -364,7 +348,6 @@ export default function ReportPage() {
         <EmptyState
           icon={BarChart3}
           title="还没有足够的学习记录"
-          description="完成一题后，这里会自动生成正确率、薄弱环节与备考建议。"
           action={
             <Link
               to="/options"

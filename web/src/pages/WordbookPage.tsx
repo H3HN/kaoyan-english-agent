@@ -81,7 +81,6 @@ export default function WordbookPage() {
       <PageHero
         eyebrow="VOCABULARY DESK"
         title="单词本与复习"
-        subtitle="把阅读里遇到的词留下来，按遗忘曲线安排下一次见面。记不住的词缩短间隔，记住的词拉开距离。"
         actions={
           <button
             type="button"
@@ -98,28 +97,24 @@ export default function WordbookPage() {
         <StatCard
           label="总词数"
           value={words.length}
-          hint="来自阅读与手动添加"
           icon={BookMarked}
           accent="blue"
         />
         <StatCard
           label="大纲词"
           value={outlineCount}
-          hint="按考研大纲标记"
           icon={Layers}
           accent="cyan"
         />
         <StatCard
           label="待复习"
           value={dueWords.length}
-          hint="按到期时间排序"
           icon={CalendarDays}
           accent="amber"
         />
         <StatCard
           label="平均掌握度"
           value={`${Math.round(averageFamiliarity * 100)}%`}
-          hint="根据复习反馈动态更新"
           icon={RefreshCw}
           accent="violet"
         />
@@ -263,7 +258,6 @@ export default function WordbookPage() {
               <EmptyState
                 icon={BookMarked}
                 title="单词本还是空的"
-                description="去长难句拆解页阅读一篇文章，或在「添加单词」中手动记录第一个词。"
                 action={
                   <button
                     type="button"
@@ -289,9 +283,6 @@ export default function WordbookPage() {
                   <div>
                     <p className="text-sm font-semibold text-slate-900">
                       今日复习
-                    </p>
-                    <p className="mt-0.5 text-[11px] text-slate-400">
-                      先回忆，再查看释义
                     </p>
                   </div>
                   <span className="text-[11px] font-medium text-slate-500 tabular-nums">
@@ -335,9 +326,6 @@ export default function WordbookPage() {
                         <p className="text-sm font-medium leading-7 text-slate-800">
                           {currentWord.meaning}
                         </p>
-                        <p className="mt-2 text-[11px] leading-relaxed text-slate-400">
-                          把这个词放回原句，再读一遍上下文。
-                        </p>
                       </div>
                     ) : (
                       <button
@@ -379,11 +367,6 @@ export default function WordbookPage() {
                 title={
                   reviewedCount > 0 ? '今日复习完成' : '今天没有待复习单词'
                 }
-                description={
-                  reviewedCount > 0
-                    ? `已完成 ${reviewedCount} 个单词的复习。新的复习时间已经按反馈更新。`
-                    : '所有单词都已安排到未来。你可以继续阅读，或去添加新的生词。'
-                }
                 action={
                   <button
                     type="button"
@@ -406,9 +389,6 @@ export default function WordbookPage() {
                   艾宾浩斯节奏
                 </h3>
               </div>
-              <p className="mt-1.5 text-[11px] leading-relaxed text-slate-400">
-                记住的词按以下间隔拉开，没记住的词回到 1 天。
-              </p>
               <div className="mt-4 grid grid-cols-3 gap-1.5">
                 {REVIEW_INTERVALS.map((day) => (
                   <span
@@ -421,7 +401,7 @@ export default function WordbookPage() {
               </div>
               <div className="mt-4 border-t border-slate-100 pt-3">
                 <p className="text-[10px] leading-relaxed text-slate-400">
-                  当前队列按到期时间排序。先复习拖得最久的词，避免间隔失真。
+                  当前队列。先复习拖得最久的词，避免间隔失真。
                 </p>
               </div>
             </div>
@@ -457,9 +437,6 @@ export default function WordbookPage() {
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
           <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
             <h2 className="text-sm font-semibold text-slate-900">手动添加</h2>
-            <p className="mt-1 text-[11px] leading-relaxed text-slate-400">
-              建议同时记下出处。复习时能回到原句，比孤立背词更有效。
-            </p>
 
             <div className="mt-5 space-y-4">
               <div>
@@ -558,9 +535,6 @@ export default function WordbookPage() {
                 </div>
               ))}
             </div>
-            <p className="mt-4 text-[10px] leading-relaxed text-slate-400">
-              每次复习反馈都会重新计算下一次时间。答错不会清空历史，只会缩短间隔。
-            </p>
           </aside>
         </div>
       ) : null}

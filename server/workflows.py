@@ -27,15 +27,48 @@ SENTENCE_MAIN = {
             "raising 的逻辑主语是前面整个事实，不是 technology。",
         ],
         "translation": "有一点始终明确：这项曾经似乎只存在于科幻小说领域的技术，如今已成为我们日常生活中不可回避的一部分；这也引发了关于隐私、责任以及人类能力定义的种种问题。",
-    }
+    },
+    "c4": {
+        "code": "The consequences of such warming would be felt disproportionately by vulnerable populations in developing nations.",
+        "body": "主句是 The consequences would be felt...；which 从句修饰 consequences，内部并列了极端天气、海平面上升与农业 disruption 三个例证；disproportionately 是推理题的关键词。",
+        "points": [
+            "which 从句修饰 consequences，不是修饰 warming。",
+            "would be felt 是被动语态，动作承受者是 consequences。",
+            "disproportionately 暗示发展中国家弱势群体受影响更大。",
+        ],
+        "translation": "这种升温带来的后果，包括更频繁的极端天气、海平面上升和农业系统受扰，将由发展中国家的弱势群体不成比例地承受。",
+    },
 }
 
 OPTION_STATIC = {
     "2024_en1_t1-q1": {
         "location": "全文 · 首段总起 + 第三句转折",
         "core": "文章首句提出 excitement 与 anxiety 两面，随后分别展开支持者与批评者的观点，末句总结技术已进入日常生活并引发深层问题。",
-    }
+    },
+    "2023_en1_t1-q1": {
+        "location": "第一段 · 末句",
+        "core": "末句指出气候后果将由发展中国家弱势群体不成比例地承受。",
+    },
 }
+
+
+def _context(conn: sqlite3.Connection, context_id: str):
+    passage = conn.execute(
+        "SELECT * FROM exam_passages WHERE id = ?", (context_id,)
+    ).fetchone()
+    if not passage:
+        passage = conn.execute(
+            "SELECT * FROM exam_passages WHERE id = '2024_en1_t1'"
+        ).fetchone()
+    sentences = conn.execute(
+        "SELECT id, text FROM exam_sentences WHERE passage_id = ? ORDER BY sentence_index",
+        (passage["id"],),
+    ).fetchall()
+    questions = conn.execute(
+        "SELECT id FROM exam_questions WHERE passage_id = ? ORDER BY number",
+        (passage["id"],),
+    ).fetchall()
+    return passage, sentences, questions
 
 
 def _log_run(
@@ -83,6 +116,25 @@ def run_sentence_workflow(
     vocabulary, vocab_trace = check_syllabus_vocab(conn, sentence["text"])
     citations, citation_trace = search_past_exams(
         conn, grammar=sentence["grammar_tags"][:2], limit=4
+    )
+    # 当前句必须出现在引用里，不能被同语法标签的其他年份挤出。
+    own_citation = {
+        "id": sentence["id"],
+        "source": sentence["source"],
+        "year": sentence["year"],
+        "exam_type": sentence["exam_type"],
+        "text": sentence["text"],
+        "grammar_tags": sentence["grammar_tags"],
+    }
+    citations = [own_citation] + [
+        item
+        for item in citations
+        if item["id"] != sentence["id"]
+        and item.get("passage_id") == sentence["passage_id"]
+    ][:3]
+    citation_trace["summary"] = (
+        f"定位到当前篇 {len(citations)} 条真题切片，"
+        f"优先引用 {sentence['source']}"
     )
     top_vocab = _top_vocab(vocabulary)
     result = {
@@ -164,9 +216,10 @@ def _capability_text(conn: sqlite3.Connection) -> str:
 
 
 def _run_chat_deterministic(
-    conn: sqlite3.Connection, message: str
+    conn: sqlite3.Connection, message: str, context_id: str = "2024_en1_t1"
 ) -> dict[str, Any]:
     text = message.lower()
+    passage, context_sentences, context_questions = _context(conn, context_id)
     tool_trace: list[dict[str, Any]] = []
     citations: list[dict[str, Any]] = []
 
@@ -216,8 +269,19 @@ def _run_chat_deterministic(
 
     # 2) 长难句
     if any(key in message for key in ("从句", "长难句", "拆解", "句子")):
-        result = run_sentence_workflow(conn, "s4")
+        sentence_id = (
+            max(context_sentences, key=lambda row: len(row["text"]))["id"]
+            if context_sentences
+            else "s4"
+        )
+        result = run_sentence_workflow(conn, sentence_id)
         assert result
+        static = SENTENCE_MAIN.get(sentence_id) or {
+            "code": result["sentence"]["text"],
+            "body": "先找主干，再剥离从句与修饰，最后回到中文语序。",
+            "points": ["结合工具返回的语法标签逐层拆解。"],
+            "translation": "",
+        }
         tool_trace.extend(result["tool_trace"])
         citations.extend(result["citations"])
         vocab_items = []
@@ -231,12 +295,12 @@ def _run_chat_deterministic(
                 f"{item['word']}（{item['level']}，切片频次 {item['exam_frequency']}）：{item['basic_meaning']}{suffix}"
             )
         return {
-            "intro": "这句话的难点不在词汇，而在三层嵌套。我先核对了大纲词库，再检索了同类真题切片。",
+            "intro": "这句话的难点不在词汇，而在结构层次。我先核对了大纲词库，再检索了同类真题切片。",
             "sections": [
                 {
                     "title": "主干",
-                    "code": SENTENCE_MAIN["s4"]["code"],
-                    "body": SENTENCE_MAIN["s4"]["body"],
+                    "code": static["code"],
+                    "body": static["body"],
                 },
                 {
                     "title": "大纲词核验",
@@ -251,7 +315,7 @@ def _run_chat_deterministic(
                 },
                 {
                     "title": "考点",
-                    "items": SENTENCE_MAIN["s4"]["points"],
+                    "items": static["points"],
                 },
             ],
             "tool_trace": tool_trace,
@@ -260,8 +324,20 @@ def _run_chat_deterministic(
 
     # 3) 选项陷阱
     if any(key in message for key in ("选项", "陷阱", "主旨题", "细节题")):
-        result = run_options_workflow(conn, "2024_en1_t1-q1", None)
+        question_id = context_questions[0]["id"] if context_questions else "2024_en1_t1-q1"
+        result = run_options_workflow(conn, question_id, None)
         assert result
+        option_static = OPTION_STATIC.get(
+            question_id,
+            {
+                "location": (
+                    result["source_sentence"]["source"]
+                    if result.get("source_sentence")
+                    else "自定义导入"
+                ),
+                "core": "",
+            },
+        )
         tool_trace.extend(result["tool_trace"])
         citations.extend(result["citations"])
         question = result["question"]
@@ -276,8 +352,8 @@ def _run_chat_deterministic(
                     "title": "题型与定位",
                     "items": [
                         f"题型：{question['question_type']}",
-                        f"定位：{OPTION_STATIC['2024_en1_t1-q1']['location']}",
-                        OPTION_STATIC["2024_en1_t1-q1"]["core"],
+                        f"定位：{option_static['location']}",
+                        *([option_static["core"]] if option_static["core"] else []),
                     ],
                 },
                 {
@@ -364,9 +440,12 @@ def _run_chat_deterministic(
 
     # 6) 段落主旨
     if any(key in message for key in ("主旨", "总结", "段落", "态度")):
-        citations, search_trace = search_past_exams(
-            conn, query="artificial intelligence", limit=2
+        query = (
+            "climate change"
+            if passage["id"].startswith("2023")
+            else "artificial intelligence"
         )
+        citations, search_trace = search_past_exams(conn, query=query, limit=2)
         tool_trace.append(search_trace)
         return {
             "intro": "这段文字不是单纯介绍 AI，而是在“兴奋”与“焦虑”之间保持张力。主旨题要选的，是能同时覆盖两面的概括项。",
@@ -437,7 +516,7 @@ def get_trap_knowledge(conn: sqlite3.Connection) -> list[dict[str, Any]]:
 
 
 def run_chat_workflow(
-    conn: sqlite3.Connection, message: str
+    conn: sqlite3.Connection, message: str, context_id: str = "2024_en1_t1"
 ) -> dict[str, Any]:
     """Deterministic tools first, optional LLM rewrite second.
 
@@ -445,7 +524,7 @@ def run_chat_workflow(
     rewrites the teaching prose, so a failed or hallucinated model call cannot
     break provenance or software state.
     """
-    base = _run_chat_deterministic(conn, message)
+    base = _run_chat_deterministic(conn, message, context_id)
     if not is_configured():
         base["llm_used"] = False
         return base

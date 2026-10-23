@@ -21,12 +21,7 @@ export function ToolTrace({
           <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-800 text-white">
             <Workflow className="h-3.5 w-3.5" />
           </span>
-          <div>
-            <h3 className="text-xs font-semibold text-slate-900">{title}</h3>
-            <p className="text-[10px] text-slate-400">
-              由 FastAPI 工具层执行，结果可追溯
-            </p>
-          </div>
+          <h3 className="text-xs font-semibold text-slate-900">{title}</h3>
         </div>
         <Tag tone="emerald" dot>
           {tools.length} 次调用
@@ -72,9 +67,6 @@ export function CitationList({
       <div className="flex items-center gap-2">
         <BookOpenCheck className="h-3.5 w-3.5 text-emerald-500" />
         <h3 className="text-xs font-semibold text-slate-900">真题溯源</h3>
-        <span className="text-[10px] text-slate-400">
-          强制标注出处
-        </span>
       </div>
       <div className={`mt-3 space-y-2.5 ${compact ? '' : 'max-h-[320px] overflow-y-auto scrollbar-thin'}`}>
         {citations.map((citation) => (

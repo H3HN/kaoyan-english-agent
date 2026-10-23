@@ -98,6 +98,9 @@ question_id + user_answer
 | GET | `/api/vocab/search` | 词库检索 |
 | POST | `/api/tools/check-vocab` | 工具直连 |
 | GET | `/api/tools/search-exams` | 工具直连 |
+| POST | `/api/exams/import` | 手动导入单题（含 DeepSeek 选项分析） |
+| POST | `/api/exams/auto-import` | PDF URL / 原文自动抽取整篇阅读并导入 |
+| GET | `/api/questions/full` | 返回完整题目、选项分析与出处 |
 | GET | `/api/agent/runs` | 最近工作流执行日志 |
 
 OpenAPI 文档：http://localhost:8000/docs
@@ -119,6 +122,28 @@ LLM_MODEL=deepseek-chat
 ```
 
 `server/.env` 已被 `.gitignore` 忽略。前端对话回答中的 `llm_used` 字段表示是否经过 DeepSeek 生成；工具链与出处不依赖该字段。
+
+## 5.2 真题来源与自动导入
+
+公开渠道没有稳定的官方结构化 API。当前方案：
+
+- 官方信息：研招网、中国教育考试网（大纲/通知，不是结构化题库）
+- 公开 PDF 仓库：[Fantasia1999/kaoyanzhenti](https://github.com/Fantasia1999/kaoyanzhenti)，收录英语一 1998–2026、英语二 2010–2026 的考场版 PDF
+- 词库：[KyleBing/english-vocabulary](https://github.com/KyleBing/english-vocabulary)，BSD-3-Clause
+
+自动导入流程：
+
+```
+PDF URL / 本地 PDF / 原始文本
+  → pypdf 抽取文本
+  → 按 Text N 切片
+  → DeepSeek 结构化 passage + questions + options
+  → 可选答案序列覆盖
+  → 批量生成选项陷阱分析
+  → 写入 SQLite
+```
+
+不内置、不再分发真题 PDF；不使用商业题库站点的解析内容做批量抓取。PDF 由使用者提供，并自行确认来源授权与使用条款。
 
 ## 6. 数据库
 

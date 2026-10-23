@@ -96,7 +96,6 @@ export default function KnowledgePage() {
       <PageHero
         eyebrow="DOMAIN KNOWLEDGE"
         title="领域知识库"
-        subtitle="Agent 的判断不是凭空来的。题型、陷阱、拆解方法都沉淀在这里，成为每一次回答的参照系。"
       />
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -143,9 +142,6 @@ export default function KnowledgePage() {
                 </h2>
                 <Tag tone="amber">SQLite</Tag>
               </div>
-              <p className="mt-1 text-[11px] leading-relaxed text-slate-400">
-                同一个词，考研阅读里可能考第二个意思。先按语境判断，再背第一释义。
-              </p>
             </div>
             <span className="text-[10px] text-slate-400">
               共 {rareWords.length} 个样例
@@ -231,7 +227,6 @@ export default function KnowledgePage() {
         <section>
           <SectionHeader
             title="题型方法论"
-            description="先判断题目在问什么，再决定去哪里找答案。"
           />
           {filteredTypes.length > 0 ? (
             <div className="grid gap-4 lg:grid-cols-2">
@@ -289,7 +284,6 @@ export default function KnowledgePage() {
             <EmptyState
               icon={Search}
               title="没有匹配的题型"
-              description="换一个关键词，或清空搜索查看全部题型。"
             />
           )}
         </section>
@@ -299,7 +293,6 @@ export default function KnowledgePage() {
         <section>
           <SectionHeader
             title="陷阱类型"
-            description="干扰项不是随机编的，常见形态就这几类。"
           />
           {filteredTraps.length > 0 ? (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -332,7 +325,6 @@ export default function KnowledgePage() {
             <EmptyState
               icon={Search}
               title="没有匹配的陷阱类型"
-              description="试试“范围”“偷换”“无中生有”等关键词。"
             />
           )}
         </section>
@@ -342,7 +334,6 @@ export default function KnowledgePage() {
         <section>
           <SectionHeader
             title="拆解方法"
-            description="两套固定流程，分别处理句子与选项。"
           />
           {filteredMethods.length > 0 ? (
             <div className="grid gap-4 lg:grid-cols-2">
@@ -384,7 +375,6 @@ export default function KnowledgePage() {
             <EmptyState
               icon={Search}
               title="没有匹配的方法"
-              description="清空搜索，查看完整的两套拆解流程。"
             />
           )}
         </section>

@@ -13,7 +13,6 @@ import { Link } from 'react-router-dom'
 import { ComparePanel } from '../components/ComparePanel'
 import { FeatureCard } from '../components/FeatureCard'
 import { PageHero } from '../components/PageHero'
-import { ProgressBar } from '../components/ProgressBar'
 import { SectionHeader } from '../components/SectionHeader'
 import { StatCard } from '../components/StatCard'
 import { Tag } from '../components/Tag'
@@ -29,7 +28,6 @@ const features = [
       '按五步法拆到主干、从句与修饰，英文原句保留完整语境，不做碎片化翻译。',
     icon: ScanText,
     accent: 'blue' as const,
-    meta: '五步法 · 语法树 · 名师考点',
   },
   {
     to: '/options',
@@ -38,7 +36,6 @@ const features = [
       '左栏题干与定位句，右栏 A / B / C / D 逐项标注陷阱类型，最后回到解题路径。',
     icon: Target,
     accent: 'emerald' as const,
-    meta: '题型识别 · 四项对照 · 解题步骤',
   },
   {
     to: '/chat',
@@ -47,7 +44,6 @@ const features = [
       '把 Agent 当作随叫随到的辅导老师，围绕句子、选项与复习计划连续追问。',
     icon: MessageSquareText,
     accent: 'violet' as const,
-    meta: '快捷 Prompt · 结构化回答',
   },
   {
     to: '/wordbook',
@@ -56,7 +52,6 @@ const features = [
       '阅读中沉淀生词，按艾宾浩斯间隔安排复习，掌握度与下次复习时间一目了然。',
     icon: BookMarked,
     accent: 'amber' as const,
-    meta: '生词沉淀 · 到期提醒 · 掌握度',
   },
 ]
 
@@ -87,7 +82,6 @@ export default function DashboardPage() {
       <PageHero
         eyebrow="KAOYAN ENGLISH STUDIO"
         title="把阅读训练，做成可复用的工作流"
-        subtitle="长难句拆解、选项陷阱分析、生词管理与学习报告，共用同一套学术工作台。少一点切换，多一点专注。"
         actions={
           <>
             <Link
@@ -96,6 +90,12 @@ export default function DashboardPage() {
             >
               开始拆解
               <ArrowRight className="h-4 w-4" />
+            </Link>
+            <Link
+              to="/options?import=1"
+              className="inline-flex items-center gap-2 rounded-lg border border-white/15 bg-white/5 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-white/10"
+            >
+              导入真题
             </Link>
             <Link
               to="/report"
@@ -152,9 +152,6 @@ export default function DashboardPage() {
               <p className="text-sm font-semibold text-amber-900">
                 今天有 {dueWords.length} 个单词到期
               </p>
-              <p className="mt-0.5 text-xs leading-relaxed text-amber-700/80">
-                先完成一轮回忆，再开始新的阅读。间隔重复比一次性背完更可靠。
-              </p>
             </div>
           </div>
           <Link
@@ -170,7 +167,6 @@ export default function DashboardPage() {
       <section>
         <SectionHeader
           title="核心功能"
-          description="四个入口，对应阅读训练的四个关键动作。"
           action={
             <Tag tone={connected ? 'emerald' : 'amber'} dot>
               {connected ? 'FastAPI 已连接' : '本地模式'}
@@ -179,7 +175,19 @@ export default function DashboardPage() {
         />
         <div className="grid gap-4 sm:grid-cols-2">
           {features.map((feature) => (
-            <FeatureCard key={feature.to} {...feature} />
+            <FeatureCard
+              key={feature.to}
+              {...feature}
+              meta={
+                feature.to === '/sentence'
+                  ? '5 步 · 2 个工具'
+                  : feature.to === '/options'
+                    ? `${meta?.question_count ?? 3} 题 · ${meta?.trap_count ?? 8} 类陷阱`
+                    : feature.to === '/chat'
+                      ? 'DeepSeek · 4 个工具'
+                      : `${words.length} 个词 · ${dueWords.length} 待复习`
+              }
+            />
           ))}
         </div>
       </section>
@@ -188,7 +196,6 @@ export default function DashboardPage() {
         <div className="lg:col-span-2">
           <SectionHeader
             title="定制效果预览"
-            description="同一个问题，通用回答与领域 Agent 的差别在哪里。"
             action={
               <Link
                 to="/comparison"
@@ -228,7 +235,6 @@ export default function DashboardPage() {
         <div>
           <SectionHeader
             title="今日学习任务"
-            description="按顺序完成，保持阅读手感。"
           />
           <div className="rounded-xl border border-slate-200 bg-white p-2 shadow-sm">
             <Link
@@ -261,9 +267,6 @@ export default function DashboardPage() {
                 <span className="block text-xs font-semibold text-slate-800">
                   拆解 1 个长难句
                 </span>
-                <span className="mt-0.5 block text-[11px] text-slate-400">
-                  先找主干，再剥离从句
-                </span>
               </span>
               <ChevronRight className="h-4 w-4 shrink-0 text-slate-300" />
             </Link>
@@ -278,27 +281,15 @@ export default function DashboardPage() {
                 <span className="block text-xs font-semibold text-slate-800">
                   分析 1 道选项陷阱
                 </span>
-                <span className="mt-0.5 block text-[11px] text-slate-400">
-                  对照原文，逐项排除
-                </span>
               </span>
               <ChevronRight className="h-4 w-4 shrink-0 text-slate-300" />
-            </Link>
-            <div className="px-3 pb-2 pt-4">
-              <div className="flex items-center justify-between text-[11px] text-slate-400">
-                <span>今日节奏</span>
-                <span>保持连续</span>
-              </div>
-              <ProgressBar value={36} tone="blue" className="mt-2" />
-            </div>
-          </div>
+            </Link>          </div>
         </div>
       </div>
 
       <section>
         <SectionHeader
           title="最近练习"
-          description="来自你的答题记录，按时间倒序。"
           action={
             <Link
               to="/report"

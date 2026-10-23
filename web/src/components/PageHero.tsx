@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 interface PageHeroProps {
   eyebrow?: string
   title: string
-  subtitle: string
+  subtitle?: string
   actions?: ReactNode
 }
 
@@ -25,9 +25,11 @@ export function PageHero({
           <h1 className="mt-2 text-balance text-2xl font-bold tracking-tight text-white sm:text-[28px]">
             {title}
           </h1>
-          <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-300">
-            {subtitle}
-          </p>
+          {subtitle ? (
+            <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-300">
+              {subtitle}
+            </p>
+          ) : null}
         </div>
         {actions ? (
           <div className="flex shrink-0 flex-wrap items-center gap-2">

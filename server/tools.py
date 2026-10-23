@@ -199,6 +199,7 @@ def search_past_exams(
         {
             "id": row["id"],
             "source": row["source_label"],
+            "passage_id": row["passage_id"],
             "year": row["year"],
             "exam_type": row["exam_type"],
             "text": row["text"],

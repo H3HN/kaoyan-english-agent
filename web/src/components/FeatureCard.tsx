@@ -6,7 +6,7 @@ import { toneStyles, type Tone } from './Tag'
 interface FeatureCardProps {
   to: string
   title: string
-  description: string
+  description?: string
   icon: LucideIcon
   accent?: Tone
   meta?: string
@@ -45,9 +45,6 @@ export function FeatureCard({
         <span className="flex items-center justify-between gap-2">
           <span className="text-sm font-semibold text-slate-900">{title}</span>
           <ArrowUpRight className="h-4 w-4 shrink-0 text-slate-300 transition-colors group-hover:text-slate-500" />
-        </span>
-        <span className="mt-1.5 block text-xs leading-relaxed text-slate-500">
-          {description}
         </span>
         {meta ? (
           <span className="mt-3 block text-[11px] font-medium text-slate-400">

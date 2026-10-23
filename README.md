@@ -31,6 +31,8 @@ cd server
 
 当前本地库另已导入 2023 / 2024 英语一完整阅读 8 篇、40 题，阅读训练页可直接切换 Text 1–4；清单见 [docs/IMPORTED-EXAMS.md](docs/IMPORTED-EXAMS.md)。
 
+为了便于其他成员复现，导入内容还导出为可审阅的 `server/data/demo_snapshot.json`，新环境执行 `python server/scripts/load_demo.py` 即可恢复；快照只含导入文章、句子、题目与拆解缓存，不含原始 PDF。
+
 ## 启动 React 工作台
 
 ```bash

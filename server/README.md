@@ -46,6 +46,30 @@ python scripts/auto_import.py --url https://example.com/2024.pdf \
 
 > 不内置、不再分发真题 PDF。PDF 由使用者提供；请遵守来源站点的版权与使用条款。推荐用于已获授权的公开教学 PDF。
 
+## 共享测试数据（导入真题）
+
+当前本地库的 8 篇导入文章、40 题与 5 条句子拆解缓存已导出为：
+
+```text
+server/data/demo_snapshot.json
+```
+
+新环境恢复：
+
+```bash
+cd server
+python scripts/load_demo.py
+# 如需先清空已有 auto_ 导入数据：
+python scripts/load_demo.py --reset
+```
+
+说明：
+
+- 快照只含 `auto_` 导入文章、句子、题目、选项分析与拆解缓存，不含原始 PDF。
+- 基础词库、2 篇示例文章、7 个演示单词与 20 条练习记录由 `seed.py` 自动生成。
+- 更新导入内容后，可重新导出：`python scripts/export_demo.py`。
+- 快照仅用于课程内部测试，请勿再分发到公开渠道；原始 PDF 的版权归来源方。
+
 ## 工具
 
 | 工具 | 作用 |

@@ -186,7 +186,7 @@ erDiagram
 - 词库：`server/data/kaoyan_vocab.txt`，公共词库去重后 5,064 条；不是官方 5,500 全集。
 - 熟词僻义：`server/data/rare_meanings.json`，27 条基础 + 6 条补充，共 33 条。
 - 示例文章：`server/data/exam_slices.json`，2 篇、8 句、3 题，用于工作流演示。
-- 导入真题：8 篇、40 题、145 句，存于被忽略的 `server/data/app.db`，不进入 Git。
+- 导入真题：8 篇、40 题、145 句，存于被忽略的 `server/data/app.db`；为课程测试另导出 `server/data/demo_snapshot.json`，可用 `scripts/load_demo.py` 恢复。
 - `exam_frequency` 是**当前 153 个句子语料内的出现次数**，不是历年考频。
 - 题目答案来自公开 PDF/答案页，人工核对；2024 Text 4 的 `Idaho case` 已修正为 `Sackett case`；2023 Text 2 首次解析失败后已重跑。
 
@@ -769,6 +769,8 @@ python scripts/auto_import.py \
 ### 14.5 数据位置
 
 - `server/data/app.db`：本地题库与用户状态，已在 `.gitignore` 中忽略。
+- `server/data/demo_snapshot.json`：8 篇导入文章/40 题/拆解缓存的课程测试快照，不含 PDF。
+- `server/scripts/load_demo.py`：快照恢复；`export_demo.py`：重新导出。
 - `server/data/kaoyan_vocab.txt`：词库。
 - `server/data/exam_slices.json`：2 篇示例。
 - `server/data/rare_meanings.json`：熟词僻义。

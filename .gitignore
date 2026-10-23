@@ -1,15 +1,62 @@
+# Python
 __pycache__/
 *.pyc
 *.pyo
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+coverage/
+.venv/
+venv/
+
+# Secrets: keep only the templates
 .env
-kaoyan_agent/data/
+.env.*
+!.env.example
+
+# Local databases and SQLite sidecars
+*.db
+*.db-*
+*.sqlite
+*.sqlite3
+
+# Local exam PDFs and downloaded artifacts
+*.pdf
+
+# Logs, dumps, temporary files
+*.log
+*.tmp
+*.jsonl
+*.chatlog
+*.transcript
+tmp/
+scratch/
+chat_exports/
+
+# Frontend build/dependencies
+node_modules/
+dist/
+dist-ssr/
+.vite/
+web/dist/
+
+# Editors / OS
 .DS_Store
 .idea/
 .vscode/
-*.log
-.venv/
-venv/
-server/data/app.db
-server/data/app.db-wal
-server/data/app.db-shm
-server/data/*.pdf
+
+# Local Streamlit state
+kaoyan_agent/data/
+
+# Local-only course/private material (kept on disk, not in GitHub)
+/团队展示博客.md
+/答辩PPT大纲.md
+/调研问卷题目.md
+/选题推荐对比.md
+/需求分析文档.md
+/5f64312d1398793934adba9e09b3a45d.png
+/*.png
+/*.jpg
+/*.jpeg
+/*.webp

@@ -623,3 +623,34 @@ def search_vocab(conn: sqlite3.Connection, keyword: str, limit: int = 20) -> lis
         (f"%{keyword}%", f"%{keyword}%", f"%{keyword}%", limit),
     ).fetchall()
     return [dict(row) for row in rows]
+
+
+def list_vocab(
+    conn: sqlite3.Connection,
+    keyword: str = "",
+    level: str = "",
+    sort: str = "freq",
+    offset: int = 0,
+    limit: int = 50,
+) -> dict[str, Any]:
+    """浏览词库：关键词为空时返回全量分页列表。"""
+    where: list[str] = []
+    params: list[Any] = []
+    if keyword:
+        where.append("(word LIKE ? OR basic_meaning LIKE ? OR rare_meaning LIKE ?)")
+        params.extend([f"%{keyword}%"] * 3)
+    if level:
+        where.append("level = ?")
+        params.append(level)
+    clause = f"WHERE {' AND '.join(where)}" if where else ""
+
+    total = conn.execute(
+        f"SELECT COUNT(*) FROM syllabus_vocabulary {clause}", params
+    ).fetchone()[0]
+
+    order = "word ASC" if sort == "alpha" else "exam_frequency DESC, word ASC"
+    rows = conn.execute(
+        f"SELECT * FROM syllabus_vocabulary {clause} ORDER BY {order} LIMIT ? OFFSET ?",
+        [*params, limit, offset],
+    ).fetchall()
+    return {"items": [dict(row) for row in rows], "total": total}

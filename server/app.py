@@ -33,6 +33,7 @@ from tools import (
     get_trap_rules,
     list_questions,
     list_sentences,
+    list_vocab,
     record_option_attempt,
     remove_word,
     review_word,
@@ -813,6 +814,18 @@ def vocab_search(
     if not q.strip():
         return {"items": []}
     return {"items": search_vocab(conn, q.strip(), limit)}
+
+
+@app.get("/api/vocab")
+def vocab_browse(
+    conn: DB,
+    q: str = Query(default="", max_length=80),
+    level: str = Query(default="", max_length=16),
+    sort: str = Query(default="freq", pattern="^(freq|alpha)$"),
+    offset: int = Query(default=0, ge=0),
+    limit: int = Query(default=50, ge=1, le=200),
+):
+    return list_vocab(conn, q.strip(), level.strip(), sort, offset, limit)
 
 
 @app.post("/api/tools/check-vocab")

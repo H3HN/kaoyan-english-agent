@@ -31,29 +31,15 @@ streamlit run app.py
 cp .env.example .env
 ```
 
-推荐使用 **Kimi**（长文本能力强，适合阅读理解）：
+当前推荐 **DeepSeek**（与 Web 工作台默认配置一致）：
 
-```
-LLM_API_KEY=你的Kimi_API_Key
-LLM_BASE_URL=https://api.moonshot.cn/v1
-LLM_MODEL=moonshot-v1-8k
-```
-
-或使用 **DeepSeek**：
-
-```
+```dotenv
 LLM_API_KEY=你的DeepSeek_API_Key
 LLM_BASE_URL=https://api.deepseek.com/v1
 LLM_MODEL=deepseek-chat
 ```
 
-或使用 **OpenAI GPT**：
-
-```
-LLM_API_KEY=你的OpenAI_API_Key
-LLM_BASE_URL=https://api.openai.com/v1
-LLM_MODEL=gpt-3.5-turbo
-```
+也兼容任意 OpenAI 格式接口，只需替换 Base URL 与模型名。不要把真实 Key 提交到仓库。
 
 ## 功能页面
 

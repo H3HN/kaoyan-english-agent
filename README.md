@@ -72,6 +72,7 @@ npm run preview
 
 ## 文档
 
+- [本地启动与配置教程](docs/LOCAL-SETUP.md)
 - [前后端分离架构](docs/ARCHITECTURE.md)
 - [已导入真题清单](docs/IMPORTED-EXAMS.md)
 - [答辩演示与追问准备](docs/DEFENSE-NOTES.md)

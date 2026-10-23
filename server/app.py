@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from db import connect, init_db
+from llm import status as llm_status
 from tools import (
     add_to_vocab_book,
     check_syllabus_vocab,
@@ -112,7 +113,7 @@ def root():
 @app.get("/api/health")
 def health(conn: DB):
     meta = get_meta(conn)
-    return {"status": "ok", "database": "connected", **meta}
+    return {"status": "ok", "database": "connected", **meta, **llm_status()}
 
 
 @app.get("/api/meta")

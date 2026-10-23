@@ -39,7 +39,22 @@ cd server
 - `POST /api/workflow/options`：定位 + 陷阱归档 + 出处
 - `POST /api/workflow/chat`：意图路由，调用上述工具并返回结构化回答
 
-当前回答由确定性规则与数据库检索生成。`prompts.py` 已固化 LLM 生成层的 System Prompt；接入时在 `workflows.py` 中把工具结果与引用作为上下文传给模型，工具层与检索层保持不变。
+对话采用“工具层 + 生成层”两段式：
+
+1. 工具层先查大纲词、真题切片与单词本；
+2. DeepSeek 只拿到工具结果与出处，负责组织讲解；
+3. `tool_trace` 与 `citations` 由后端返回，不经过模型；
+4. Key 未配置或调用失败时，自动回退到确定性答案。
+
+配置 `server/.env`：
+
+```text
+LLM_API_KEY=...
+LLM_BASE_URL=https://api.deepseek.com/v1
+LLM_MODEL=deepseek-chat
+```
+
+`prompts.py` 固化生成层 System Prompt，`llm.py` 负责调用与 JSON 清洗。
 
 ## 数据说明
 

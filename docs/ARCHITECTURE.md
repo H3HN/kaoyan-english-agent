@@ -75,7 +75,7 @@ question_id + user_answer
 - “把 inescapable 加入单词本” → `add_to_vocab_book`，前端收到工具链后刷新单词本
 - “安排复习计划” → 读取 `user_vocab_book` 与 `practice_records`
 
-当前对话回答由确定性工作流生成，不依赖 LLM；`run_chat_workflow` 是后续接入 LLM 的替换点，工具层与检索层保持不变。
+对话采用“工具层 + 生成层”两段式：工具层先查词库、真题与学习状态，DeepSeek 只负责把事实组织成讲解。`tool_trace` 与 `citations` 由后端返回，不经过模型；未配置 Key 或调用失败时自动回退确定性答案。
 
 ## 5. API
 
@@ -101,6 +101,24 @@ question_id + user_answer
 | GET | `/api/agent/runs` | 最近工作流执行日志 |
 
 OpenAPI 文档：http://localhost:8000/docs
+
+## 5.1 LLM 配置
+
+```bash
+cd server
+cp .env.example .env
+# 填写 LLM_API_KEY / LLM_BASE_URL / LLM_MODEL
+```
+
+DeepSeek 示例：
+
+```text
+LLM_API_KEY=...
+LLM_BASE_URL=https://api.deepseek.com/v1
+LLM_MODEL=deepseek-chat
+```
+
+`server/.env` 已被 `.gitignore` 忽略。前端对话回答中的 `llm_used` 字段表示是否经过 DeepSeek 生成；工具链与出处不依赖该字段。
 
 ## 6. 数据库
 
@@ -133,6 +151,6 @@ OpenAPI 文档：http://localhost:8000/docs
 
 - 全量 5,500 大纲词与 2010–2026 全量真题尚未完整导入；当前是可运行的垂直切片。
 - 词频只统计当前切片，不能对外宣称“历年考频”。
-- 对话是确定性工作流，没有接入 LLM；适合答辩演示“工具与编排”，但生成自然度有限。
+- 对话有 DeepSeek 生成层，但句子拆解、选项分析仍由确定性规则 + 静态结构展示，LLM 尚未覆盖这两条工作流。
 - 无登录与用户隔离；当前是单用户演示库。
 - 复习算法是简化 SM-2，不是严格实现。

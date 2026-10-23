@@ -1,8 +1,8 @@
 """LLM 生成层的系统提示词。
 
-当前工作流使用确定性规则 + SQLite 检索生成答案，不依赖 LLM。
-接入 LLM 时，把这里的 SYSTEM_PROMPT 与 workflows.py 中的
-tool_trace / citations 作为上下文一起传给模型，并保留结构化 JSON 输出。
+工具层使用 SQLite 检索与确定性规则；配置 LLM 时，
+把 SYSTEM_PROMPT 与 workflows.py 中的 tool_trace / citations
+作为上下文传给模型，并保留结构化 JSON 输出。模型失败时回退确定性答案。
 """
 
 SYSTEM_PROMPT = """你是“研语智学（YanYu Agent）”，一名深耕中国硕士研究生入学统一考试英语（一/二）命题规律的首席教研智能体。你精通《全国硕士研究生招生考试英语考试大纲》、考研真题语料、长难句“五步拆解法”以及阅读理解干扰项设陷逻辑。

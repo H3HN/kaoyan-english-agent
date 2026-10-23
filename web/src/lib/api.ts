@@ -97,6 +97,7 @@ export interface ChatWorkflow {
   sections: ChatSection[]
   tool_trace: ToolCall[]
   citations: Citation[]
+  llm_used?: boolean
 }
 
 export interface MetaInfo {

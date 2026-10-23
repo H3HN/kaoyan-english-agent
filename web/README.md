@@ -44,7 +44,7 @@ npm run preview
 - AI 对话调用 `/api/workflow/chat`，应答由 FastAPI 工作流生成；后端不可用时自动退回本地示例。
 - 单词本通过 `/api/state`、`/api/wordbook` 与 SQLite 同步；`localStorage` 仅作离线兜底。
 
-当前没有接入 LLM；生成层是确定性工作流。`web/src/lib/api.ts` 是唯一 API 客户端，接口类型与 FastAPI 返回值对应。
+AI 对话调用 `/api/workflow/chat`：FastAPI 先执行工具检索，DeepSeek 负责讲解；回答底部标记“DeepSeek 生成”。后端未配置 Key 或调用失败时自动回退。`web/src/lib/api.ts` 是唯一 API 客户端。
 
 ## 设计约束
 

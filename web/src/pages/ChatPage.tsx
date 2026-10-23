@@ -33,6 +33,7 @@ interface ChatMessage {
   tools?: ToolCall[]
   citations?: Citation[]
   source?: 'server' | 'local'
+  llmUsed?: boolean
 }
 
 const initialMessages: ChatMessage[] = [
@@ -325,7 +326,11 @@ function AssistantBubble({ message }: { message: ChatMessage }) {
               <span className="text-[9px] font-semibold uppercase tracking-[0.14em] text-slate-400">
                 Tool trace
               </span>
-              {message.source === 'local' ? (
+              {message.llmUsed ? (
+                <Tag tone="violet" className="ml-auto text-[9px]">
+                  DeepSeek 生成
+                </Tag>
+              ) : message.source === 'local' ? (
                 <Tag tone="amber" className="ml-auto text-[9px]">
                   本地兜底
                 </Tag>
@@ -405,6 +410,7 @@ export default function ChatPage() {
           tools: reply.tool_trace,
           citations: reply.citations,
           source: 'server',
+          llmUsed: reply.llm_used,
         },
       ])
       if (
@@ -650,7 +656,7 @@ export default function ChatPage() {
                 Enter 发送 · Shift + Enter 换行
               </p>
               <p className="text-[10px] text-slate-400">
-                回答由 FastAPI 确定性工作流生成，可替换为 LLM 推理
+                Tool Trace 由 FastAPI 执行，DeepSeek 负责讲解
               </p>
             </div>
           </div>
@@ -662,7 +668,7 @@ export default function ChatPage() {
           <ChevronRight className="h-3.5 w-3.5" />
           回答会保留在当前会话中，刷新页面后重置
         </span>
-        <span>SQLite 领域库 · FastAPI 工作流</span>
+        <span>SQLite 领域库 · DeepSeek 生成</span>
       </div>
     </div>
   )

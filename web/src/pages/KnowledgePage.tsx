@@ -101,15 +101,15 @@ export default function KnowledgePage() {
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatCard
           label="大纲词汇"
-          value={meta ? meta.vocab_count.toLocaleString('zh-CN') : '1,678'}
-          hint={meta ? 'SQLite 考研词库 · 去重后' : '当前演示词库'}
+          value={meta ? meta.vocab_count.toLocaleString('zh-CN') : '—'}
+          hint={meta ? 'SQLite 考研词库 · 去重后' : '等待后端数据'}
           icon={BookOpenCheck}
           accent="blue"
         />
         <StatCard
-          label="内置真题"
-          value={meta ? `${meta.passage_count} 篇` : '2 篇'}
-          hint="2023 / 2024 英语一"
+          label="真题篇章"
+          value={meta ? `${meta.passage_count} 篇` : '—'}
+          hint={meta ? `${meta.question_count} 道题目` : '等待后端数据'}
           icon={BookOpen}
           accent="emerald"
         />

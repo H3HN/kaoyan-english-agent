@@ -109,20 +109,20 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatCard
-          label="内置真题"
-          value={meta ? meta.passage_count : 2}
+          label="真题篇章"
+          value={meta ? meta.passage_count : '—'}
           hint={
             meta
-              ? `${meta.question_count} 道题目 · ${meta.sentence_count} 个句子切片`
-              : '2 篇阅读 · 3 道题目'
+              ? `${meta.question_count} 道题目 · ${meta.sentence_count} 个句子`
+              : '等待后端数据'
           }
           icon={BookOpenCheck}
           accent="blue"
         />
         <StatCard
           label="大纲词汇"
-          value={meta ? meta.vocab_count.toLocaleString('zh-CN') : '1,678'}
-          hint={meta ? 'SQLite 考研词库 · 去重后' : '当前演示词库规模'}
+          value={meta ? meta.vocab_count.toLocaleString('zh-CN') : '—'}
+          hint={meta ? 'SQLite 考研词库 · 去重后' : '等待后端数据'}
           icon={LibraryBig}
           accent="cyan"
         />
@@ -182,7 +182,7 @@ export default function DashboardPage() {
                 feature.to === '/sentence'
                   ? '5 步 · 2 个工具'
                   : feature.to === '/options'
-                    ? `${meta?.question_count ?? 3} 题 · ${meta?.trap_count ?? 8} 类陷阱`
+                    ? meta ? `${meta.question_count} 题 · ${meta.trap_count} 类陷阱` : '等待后端数据'
                     : feature.to === '/chat'
                       ? 'DeepSeek · 4 个工具'
                       : `${words.length} 个词 · ${dueWords.length} 待复习`
@@ -330,7 +330,7 @@ export default function DashboardPage() {
             ))
           ) : (
             <div className="px-5 py-10 text-center text-xs text-slate-400">
-              还没有练习记录，去「选项陷阱分析」开始第一题。
+              还没有练习记录，去「阅读真题训练」开始第一题。
             </div>
           )}
         </div>

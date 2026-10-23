@@ -56,6 +56,13 @@ CREATE TABLE IF NOT EXISTS exam_questions (
     source_sentence_id TEXT REFERENCES exam_sentences(id)
 );
 
+CREATE TABLE IF NOT EXISTS sentence_breakdowns (
+    sentence_id TEXT PRIMARY KEY REFERENCES exam_sentences(id),
+    data_json TEXT NOT NULL,
+    llm_used INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE TABLE IF NOT EXISTS trap_rules (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL UNIQUE,

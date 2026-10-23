@@ -17,6 +17,7 @@ from db import connect, init_db
 from llm import (
     analyze_imported_question,
     analyze_imported_questions_batch,
+    analyze_sentence_breakdown,
     extract_exam_text,
     status as llm_status,
 )
@@ -76,15 +77,15 @@ DB = Annotated[sqlite3.Connection, Depends(get_db)]
 
 class ChatRequest(BaseModel):
     message: str = Field(min_length=1, max_length=4000)
-    context_id: str = Field(default="2024_en1_t1", max_length=80)
+    context_id: str = Field(default="", max_length=80)
 
 
 class SentenceRequest(BaseModel):
-    sentence_id: str = Field(default="s4", max_length=40)
+    sentence_id: str = Field(min_length=1, max_length=80)
 
 
 class OptionsRequest(BaseModel):
-    question_id: str = Field(default="2024_en1_t1-q1", max_length=80)
+    question_id: str = Field(min_length=1, max_length=80)
     user_answer: str | None = Field(default=None, max_length=4)
 
 
@@ -161,6 +162,145 @@ def state(conn: DB):
 @app.get("/api/sentences")
 def sentences(conn: DB):
     return {"items": list_sentences(conn)}
+
+
+@app.get("/api/passages")
+def passages(conn: DB):
+    rows = conn.execute(
+        """
+        SELECT p.id, p.year, p.exam_type, p.text_number,
+               LENGTH(p.text) AS char_count,
+               SUBSTR(p.text, 1, 160) AS preview,
+               (SELECT COUNT(*) FROM exam_sentences s WHERE s.passage_id = p.id) AS sentence_count,
+               (SELECT COUNT(*) FROM exam_questions q WHERE q.passage_id = p.id) AS question_count
+        FROM exam_passages p
+        ORDER BY p.year DESC, p.text_number, p.id
+        """
+    ).fetchall()
+    groups: dict[tuple[int, str, int], dict[str, Any]] = {}
+    for row in rows:
+        item = {
+            "id": row["id"],
+            "year": row["year"],
+            "exam_type": row["exam_type"],
+            "text_number": row["text_number"],
+            "char_count": row["char_count"],
+            "preview": row["preview"],
+            "sentence_count": row["sentence_count"],
+            "question_count": row["question_count"],
+            "imported": str(row["id"]).startswith("auto_"),
+        }
+        key = (item["year"], item["exam_type"], item["text_number"])
+        current = groups.get(key)
+        if current is None:
+            groups[key] = item
+            continue
+        if item["imported"] and not current["imported"]:
+            groups[key] = item
+        elif item["imported"] == current["imported"] and item["question_count"] > current["question_count"]:
+            groups[key] = item
+    items = sorted(
+        groups.values(),
+        key=lambda item: (-item["year"], item["exam_type"], item["text_number"]),
+    )
+    return {"items": items}
+
+
+@app.get("/api/passages/{passage_id}/sentences")
+def passage_sentences(passage_id: str, conn: DB):
+    passage = conn.execute(
+        "SELECT id, year, exam_type, text_number, text FROM exam_passages WHERE id = ?",
+        (passage_id,),
+    ).fetchone()
+    if not passage:
+        raise HTTPException(status_code=404, detail="passage not found")
+    rows = conn.execute(
+        """
+        SELECT id, sentence_index, paragraph, text, source_label
+        FROM exam_sentences WHERE passage_id = ?
+        ORDER BY sentence_index
+        """,
+        (passage_id,),
+    ).fetchall()
+    items = []
+    for row in rows:
+        word_count = len([word for word in re.split(r"\s+", row["text"]) if word])
+        items.append(
+            {
+                "id": row["id"],
+                "index": row["sentence_index"],
+                "paragraph": row["paragraph"],
+                "text": row["text"],
+                "source": row["source_label"],
+                "word_count": word_count,
+                "is_long": word_count >= 25,
+            }
+        )
+    return {
+        "passage": {
+            "id": passage["id"],
+            "year": passage["year"],
+            "exam_type": passage["exam_type"],
+            "text_number": passage["text_number"],
+        },
+        "items": items,
+    }
+
+
+@app.get("/api/sentences/{sentence_id}/breakdown")
+def sentence_breakdown(sentence_id: str, conn: DB):
+    row = conn.execute(
+        "SELECT * FROM exam_sentences WHERE id = ?", (sentence_id,)
+    ).fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="sentence not found")
+    cached = conn.execute(
+        "SELECT data_json, llm_used FROM sentence_breakdowns WHERE sentence_id = ?",
+        (sentence_id,),
+    ).fetchone()
+    if cached:
+        data = json.loads(cached["data_json"])
+        data["llmUsed"] = bool(cached["llm_used"])
+        return data
+
+    text = row["text"]
+    words = [word for word in re.split(r"\s+", text) if word]
+    generated = analyze_sentence_breakdown(text)
+    llm_used = bool(generated)
+    if generated:
+        data = generated
+    else:
+        data = {
+            "isLong": len(words) >= 25,
+            "main": text,
+            "mainNote": "当前为工具兜底拆解：先保留整句，再按标点与连接词人工核对从句和修饰。",
+            "clauseNote": "后端未返回结构化语法树，请结合下方工具链中的词库与真题切片核对。",
+            "clauses": [],
+            "modifiers": [],
+            "translation": "",
+            "translationLayers": [],
+            "grammar": [],
+            "examPoints": ["先找谓语，再判断从句修饰对象。"],
+            "tree": [{"role": "整句", "label": text}],
+            "segments": [{"text": text, "tone": "slate", "label": ""}],
+        }
+    data.update(
+        {
+            "id": row["id"],
+            "index": row["sentence_index"],
+            "source": row["source_label"],
+            "original": text,
+            "wordCount": len(words),
+            "isLong": bool(data.get("isLong", len(words) >= 25)),
+        }
+    )
+    conn.execute(
+        "INSERT OR REPLACE INTO sentence_breakdowns (sentence_id, data_json, llm_used) VALUES (?, ?, ?)",
+        (sentence_id, json.dumps(data, ensure_ascii=False), 1 if llm_used else 0),
+    )
+    conn.commit()
+    data["llmUsed"] = llm_used
+    return data
 
 
 @app.get("/api/questions")

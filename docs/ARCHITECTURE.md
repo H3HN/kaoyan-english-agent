@@ -103,6 +103,9 @@ question_id + user_answer
 | POST | `/api/exams/import` | 手动导入单题（含 DeepSeek 选项分析） |
 | POST | `/api/exams/auto-import` | PDF URL / 原文自动抽取整篇阅读并导入 |
 | GET | `/api/questions/full` | 返回完整题目、选项分析与出处 |
+| GET | `/api/passages` | 返回可用文章列表（同年同 Text 优先导入版） |
+| GET | `/api/passages/{id}/sentences` | 返回文章句子列表与词数 |
+| GET | `/api/sentences/{id}/breakdown` | 返回/生成单句五步拆解（缓存） |
 | GET | `/api/agent/runs` | 最近工作流执行日志 |
 
 OpenAPI 文档：http://localhost:8000/docs

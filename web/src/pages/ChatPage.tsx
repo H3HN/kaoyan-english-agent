@@ -11,7 +11,13 @@ import {
   Target,
 } from 'lucide-react'
 import { Tag } from '../components/Tag'
-import { api, type ChatWorkflow, type Citation, type ToolCall } from '../lib/api'
+import {
+  api,
+  type ChatWorkflow,
+  type Citation,
+  type PassageSummary,
+  type ToolCall,
+} from '../lib/api'
 import { useAppStore } from '../store/AppStore'
 import { useToast } from '../components/Toast'
 
@@ -33,21 +39,6 @@ interface ChatMessage {
   llmUsed?: boolean
 }
 
-const CONTEXTS = [
-  {
-    id: '2024_en1_t1',
-    label: '2024 英语一 · Text 1',
-    longSentences: 3,
-    questions: 2,
-  },
-  {
-    id: '2023_en1_t1',
-    label: '2023 英语一 · Text 1',
-    longSentences: 4,
-    questions: 1,
-  },
-] as const
-
 const initialMessages: ChatMessage[] = [
   {
     id: 'welcome',
@@ -58,226 +49,30 @@ const initialMessages: ChatMessage[] = [
 
 const presetPrompts = [
   {
-    icon: GitBranch,
     title: '解析这个句子的从句',
-    description: '按五步法拆主干与嵌套',
     prompt: '请按五步法解析当前上下文中的长难句，标出主干、从句和修饰。',
   },
   {
-    icon: Languages,
     title: '提炼本段核心词',
-    description: '筛出大纲词与高频搭配',
     prompt: '请提炼当前上下文中的核心词，区分大纲词与熟词僻义。',
   },
   {
-    icon: Target,
     title: '分析这道题的错误选项',
-    description: '标注陷阱并给出排除路径',
     prompt: '请分析当前上下文中第一道题的四个选项，标注陷阱类型。',
   },
   {
-    icon: CalendarDays,
     title: '安排本周复习计划',
-    description: '按遗忘曲线排优先级',
     prompt: '请根据我的单词本，安排本周的复习计划。',
   },
   {
-    icon: BookOpen,
     title: '总结段落主旨',
-    description: '提炼作者态度与结构',
     prompt: '请总结这段的主旨和作者态度，并指出主旨题的定位句。',
   },
   {
-    icon: BookOpen,
     title: '查一个熟词僻义',
-    description: 'address / plant / subject',
     prompt: 'address、plant、subject 在考研里有哪些熟词僻义？',
   },
 ]
-
-function buildReply(input: string): Omit<ChatMessage, 'id' | 'role'> {
-  const text = input.toLowerCase()
-
-  if (
-    text.includes('从句') ||
-    text.includes('长难句') ||
-    text.includes('拆解') ||
-    text.includes('句子')
-  ) {
-    return {
-      intro:
-        '这句话的难点不在词汇，而在三层嵌套。先把它拆成“主句 → 表语从句 → 定语从句”，再回头翻译。',
-      sections: [
-        {
-          title: '主干',
-          code: 'What remains clear is that the technology has become an inescapable part.',
-          body: 'What remains clear 是主语从句，is 是系动词，that 引导表语从句。',
-        },
-        {
-          title: '从句层级',
-          items: [
-            '主语从句：What remains clear',
-            '表语从句：that the technology ... has now become ...',
-            '定语从句：which once seemed confined to the realm of science fiction（修饰 technology）',
-          ],
-        },
-        {
-          title: '翻译',
-          body: '有一点始终明确：这项曾经似乎只存在于科幻小说领域的技术，如今已成为我们日常生活中不可回避的一部分。',
-        },
-        {
-          title: '考点',
-          items: [
-            'which 从句嵌套在表语从句内部，最容易读丢。',
-            'raising ... 是现在分词作伴随状语，逻辑主语是前面整个事实。',
-            '注意 part of 与 an inescapable part 的程度差异。',
-          ],
-        },
-      ],
-    }
-  }
-
-  if (text.includes('词') || text.includes('词汇')) {
-    return {
-      intro:
-        '这段的高价值词不多，优先记能影响句意判断的形容词和动词。大纲词用绿色标出，搭配比孤立词义更重要。',
-      sections: [
-        {
-          title: '核心词',
-          items: [
-            'prompt（v. 促使；引发）— prompt both excitement and anxiety',
-            'revolutionize（v. 彻底改变）— revolutionize industries',
-            'displacement（n. 取代；流失）— job displacement',
-            'inescapable（adj. 不可回避的）— an inescapable part of daily life',
-          ],
-        },
-        {
-          title: '大纲词判断',
-          body: '以上四个词均为考研大纲高频词。建议把 inescapable 与 accountability 一起记，它们常出现在科技伦理类文章。',
-        },
-        {
-          title: '复习建议',
-          body: '今天先记搭配，明天做一次无提示回忆，第 4 天再放回原句复现。不要只背中文释义。',
-        },
-      ],
-    }
-  }
-
-  if (
-    text.includes('选项') ||
-    text.includes('陷阱') ||
-    text.includes('主旨题') ||
-    text.includes('细节题')
-  ) {
-    return {
-      intro:
-        '这类题不要从“哪个像原文”入手，而是先定题型、再定位置，最后逐项验伪。B 是全面概括，A、C、D 各有明确的陷阱类型。',
-      sections: [
-        {
-          title: '题型与定位',
-          items: [
-            '题型：主旨题，要求概括全文，不是找某一句的同义替换。',
-            '结构：首句提出正反两面，第二段展开，末句总结影响。',
-          ],
-        },
-        {
-          title: '错误选项',
-          items: [
-            'A 过于绝对：definitely 把“支持者主张”变成“确定事实”。',
-            'C 缩小范围：only 把全行业影响缩成重复性任务行业。',
-            'D 过于绝对：all 把 job displacement 扩大成“取代所有人类工人”。',
-          ],
-        },
-        {
-          title: '结论',
-          body: 'B 同时覆盖 excitement 与 anxiety、revolutionize 与 displacement，是唯一能概括全文正反两面的选项。',
-        },
-      ],
-    }
-  }
-
-  if (text.includes('计划') || text.includes('复习') || text.includes('单词')) {
-    return {
-      intro:
-        '先处理到期词，再安排新词。复习计划按“到期优先、薄弱词加权、每天不超过 20 分钟”来排。',
-      sections: [
-        {
-          title: '今天',
-          items: [
-            '先复习已到期的 4 个词，逐词做无提示回忆。',
-            '没记住的词不延长间隔，明天再来一次。',
-          ],
-        },
-        {
-          title: '本周',
-          items: [
-            '周一 / 周三 / 周五各安排一次 15 分钟复习。',
-            '把 ubiquitous、trajectory、accountability 放回原句复现。',
-            '周末用 2024 Text 1 做一次整篇回读。',
-          ],
-        },
-        {
-          title: '原则',
-          body: '复习间隔不是越短越好。记住的词拉开间隔，没记住的词缩短间隔，让时间花在真正的薄弱项上。',
-        },
-      ],
-    }
-  }
-
-  if (
-    text.includes('主旨') ||
-    text.includes('总结') ||
-    text.includes('段落') ||
-    text.includes('态度')
-  ) {
-    return {
-      intro:
-        '这段文字不是单纯介绍 AI，而是在“兴奋”与“焦虑”之间保持张力。主旨题要选的，是能同时覆盖两面的概括项。',
-      sections: [
-        {
-          title: '段落结构',
-          items: [
-            '首句总起：AI 同时引发 excitement 与 anxiety。',
-            '第二句：支持者强调产业升级与新岗位。',
-            '第三句：批评者警告岗位流失与重复性劳动。',
-            '末句收束：技术已进入日常生活，并带来隐私、责任与能力定义的追问。',
-          ],
-        },
-        {
-          title: '一句话主旨',
-          body: '人工智能在带来产业变革的同时，也引发了就业、隐私与责任层面的深层争议。',
-        },
-        {
-          title: '作者态度',
-          items: [
-            '谨慎中立，不是盲目乐观，也不是全盘否定。',
-            '末句的 raising questions 说明作者更关心技术带来的未解问题。',
-            '主旨题优先排除 definitely、all、only 这类绝对化概括。',
-          ],
-        },
-      ],
-    }
-  }
-
-  return {
-    intro:
-      '可以。先把问题缩小到一个具体动作：是要读懂句子、排除选项，还是安排复习？你给我原文或题号，我会按对应的流程拆开。',
-    sections: [
-      {
-        title: '你可以这样问',
-        items: [
-          '“拆解这句的从句，并标出主干。”',
-          '“这道主旨题为什么不能选 C？”',
-          '“把这篇文章里的生词按大纲词分类。”',
-        ],
-      },
-      {
-        title: '当前上下文',
-        body: '2024 英语一 Text 1 已载入。你也可以直接粘贴新的英文段落。',
-      },
-    ],
-  }
-}
 
 function AssistantBubble({ message }: { message: ChatMessage }) {
   return (
@@ -391,9 +186,27 @@ export default function ChatPage() {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const counter = useRef(0)
   const { connected, refresh } = useAppStore()
-  const [contextId, setContextId] = useState<string>(CONTEXTS[0].id)
-  const context = CONTEXTS.find((item) => item.id === contextId) ?? CONTEXTS[0]
+  const [contexts, setContexts] = useState<PassageSummary[]>([])
+  const [contextId, setContextId] = useState('')
+  const context = contexts.find((item) => item.id === contextId) ?? contexts[0]
   const toast = useToast()
+
+  useEffect(() => {
+    let alive = true
+    api
+      .getPassages()
+      .then((response) => {
+        if (!alive) return
+        setContexts(response.items)
+        if (response.items[0]) setContextId(response.items[0].id)
+      })
+      .catch(() => {
+        if (alive) toast('无法读取上下文列表，请检查后端服务。', 'error')
+      })
+    return () => {
+      alive = false
+    }
+  }, [toast])
 
   useEffect(() => {
     const node = scrollRef.current
@@ -411,7 +224,7 @@ export default function ChatPage() {
 
   const send = async (raw?: string) => {
     const text = (raw ?? input).trim()
-    if (!text || typing) return
+    if (!text || typing || !contextId) return
 
     counter.current += 1
     const userMessage: ChatMessage = {
@@ -445,14 +258,14 @@ export default function ChatPage() {
         void refresh()
       }
     } catch {
-      const reply = buildReply(text)
       counter.current += 1
       setMessages((prev) => [
         ...prev,
         {
           id: `a-${counter.current}`,
           role: 'assistant',
-          ...reply,
+          intro:
+            '后端未连接，暂时无法调用词库与真题工具。请确认 FastAPI（8000 端口）运行后重试。',
           source: 'local',
         },
       ])
@@ -492,8 +305,8 @@ export default function ChatPage() {
 
           <div className="flex flex-wrap items-center gap-2">
             <div className="hidden items-center gap-1.5 md:flex">
-              <Tag tone="emerald">长难句 {context.longSentences}</Tag>
-              <Tag tone="amber">题目 {context.questions}</Tag>
+              <Tag tone="emerald">句子 {context?.sentence_count ?? 0}</Tag>
+              <Tag tone="amber">题目 {context?.question_count ?? 0}</Tag>
             </div>
             <select
               value={contextId}
@@ -504,9 +317,12 @@ export default function ChatPage() {
               aria-label="选择上下文"
               className="h-8 max-w-[170px] rounded-lg border border-slate-200 bg-white px-2 text-[11px] font-medium text-slate-600 outline-none"
             >
-              {CONTEXTS.map((item) => (
+              {contexts.length === 0 ? (
+                <option value="">加载文章…</option>
+              ) : null}
+              {contexts.map((item) => (
                 <option key={item.id} value={item.id}>
-                  {item.label}
+                  {item.year} {item.exam_type} · Text {item.text_number}
                 </option>
               ))}
             </select>

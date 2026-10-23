@@ -518,3 +518,149 @@ def analyze_imported_questions_batch(
     except Exception as exc:  # noqa: BLE001
         logger.warning("LLM batch analysis failed: %s", exc)
         return None
+
+
+def analyze_sentence_breakdown(sentence: str) -> dict[str, Any] | None:
+    """Generate a structured five-step breakdown for one imported sentence."""
+    if not is_configured():
+        return None
+    prompt = f"""请拆解下面这个考研英语长难句，只输出 JSON。
+
+句子：
+{sentence}
+
+输出格式：
+{{
+  "is_long": true,
+  "main": "主句原文",
+  "mainNote": "用中文说明主干与核心谓语",
+  "clauses": [
+    {{"text": "原文中的从句片段", "label": "定语从句/状语从句/宾语从句/主语从句/表语从句", "note": "它修饰谁、在句中起什么作用"}}
+  ],
+  "modifiers": [
+    {{"text": "原文中的修饰片段", "label": "介词短语/分词短语/不定式/插入语", "note": "修饰对象与作用"}}
+  ],
+  "translation": "整句自然中文翻译",
+  "translationLayers": ["按语义层次的中文翻译，2-4 条"],
+  "grammar": [
+    {{"name": "语法点名称", "note": "在本句中的具体体现"}}
+  ],
+  "examPoints": ["命题人可能设置的考点，2-4 条"],
+  "tree": [
+    {{"role": "主句", "label": "主句原文", "children": [{{"role": "定语从句", "label": "从句原文"}}]}}
+  ]
+}}
+
+要求：
+1. 所有 text / label 中的英文必须来自原句，不得补充原句之外的英文。
+2. main 必须是原句中的连续片段。
+3. 如果本句没有从句或修饰，返回空数组。
+4. 中文讲解要具体，不要写“注意理解”这类空话。
+5. 不要输出 Markdown 代码围栏。"""
+    try:
+        from openai import OpenAI
+
+        client = OpenAI(api_key=API_KEY, base_url=BASE_URL, timeout=120)
+        kwargs: dict[str, Any] = {
+            "model": MODEL,
+            "messages": [
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": prompt},
+            ],
+            "temperature": 0.2,
+            "max_tokens": 3000,
+            "response_format": {"type": "json_object"},
+        }
+        try:
+            response = client.chat.completions.create(**kwargs)
+        except Exception:
+            kwargs.pop("response_format", None)
+            response = client.chat.completions.create(**kwargs)
+        parsed = _extract_json(response.choices[0].message.content or "")
+        if not parsed:
+            return None
+
+        words = [item for item in re.split(r"\s+", sentence) if item]
+        result: dict[str, Any] = {
+            "isLong": bool(parsed.get("is_long", len(words) >= 25)),
+            "main": str(parsed.get("main") or sentence).strip(),
+            "mainNote": str(parsed.get("mainNote") or "").strip(),
+            "clauseNote": str(
+                parsed.get("clauseNote")
+                or "按连接词与标点剥离从句，再判断每层从句修饰的对象。"
+            ).strip(),
+            "translation": str(parsed.get("translation") or "").strip(),
+            "clauses": [],
+            "modifiers": [],
+            "translationLayers": [],
+            "grammar": [],
+            "examPoints": [],
+            "tree": [],
+        }
+
+        for key in ("clauses", "modifiers"):
+            raw_items = parsed.get(key)
+            if not isinstance(raw_items, list):
+                continue
+            for raw in raw_items[:6]:
+                if not isinstance(raw, dict):
+                    continue
+                text = str(raw.get("text") or "").strip()
+                if not text:
+                    continue
+                result[key].append(
+                    {
+                        "text": text,
+                        "label": str(raw.get("label") or "修饰成分").strip(),
+                        "note": str(raw.get("note") or "").strip(),
+                    }
+                )
+
+        for key in ("translationLayers", "examPoints"):
+            raw_items = parsed.get(key)
+            if isinstance(raw_items, list):
+                result[key] = [
+                    str(item).strip()
+                    for item in raw_items[:6]
+                    if str(item).strip()
+                ]
+
+        raw_grammar = parsed.get("grammar")
+        if isinstance(raw_grammar, list):
+            for raw in raw_grammar[:6]:
+                if not isinstance(raw, dict):
+                    continue
+                name = str(raw.get("name") or "").strip()
+                if name:
+                    result["grammar"].append(
+                        {"name": name, "note": str(raw.get("note") or "").strip()}
+                    )
+
+        def normalize_tree(raw_nodes: Any, depth: int = 0) -> list[dict[str, Any]]:
+            if not isinstance(raw_nodes, list) or depth > 2:
+                return []
+            nodes: list[dict[str, Any]] = []
+            for raw in raw_nodes[:6]:
+                if not isinstance(raw, dict):
+                    continue
+                role = str(raw.get("role") or "").strip()
+                label = str(raw.get("label") or "").strip()
+                if not role or not label:
+                    continue
+                node: dict[str, Any] = {"role": role, "label": label}
+                children = normalize_tree(raw.get("children"), depth + 1)
+                if children:
+                    node["children"] = children
+                nodes.append(node)
+            return nodes
+
+        result["tree"] = normalize_tree(parsed.get("tree"))
+        if not result["translationLayers"] and result["translation"]:
+            result["translationLayers"] = [result["translation"]]
+        if not result["tree"]:
+            result["tree"] = [{"role": "整句", "label": sentence}]
+        result["segments"] = [{"text": sentence, "tone": "slate", "label": ""}]
+        return result
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("sentence breakdown failed: %s", exc)
+        return None

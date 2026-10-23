@@ -141,6 +141,56 @@ export interface ImportExamResponse {
   question: FullQuestion
 }
 
+
+export interface PassageSummary {
+  id: string
+  year: number
+  exam_type: string
+  text_number: number
+  char_count: number
+  preview: string
+  sentence_count: number
+  question_count: number
+  imported: boolean
+}
+
+export interface PassageSentence {
+  id: string
+  index: number
+  paragraph: number
+  text: string
+  source: string
+  word_count: number
+  is_long: boolean
+}
+
+export interface BreakdownNode {
+  role: string
+  label: string
+  children?: BreakdownNode[]
+}
+
+export interface SentenceBreakdown {
+  id: string
+  index: number
+  source: string
+  original: string
+  wordCount: number
+  isLong: boolean
+  main: string
+  mainNote: string
+  clauseNote: string
+  clauses: { text: string; label: string; note: string }[]
+  modifiers: { text: string; label: string; note: string }[]
+  translation: string
+  translationLayers: string[]
+  grammar: { name: string; note: string }[]
+  examPoints: string[]
+  tree: BreakdownNode[]
+  segments: { text: string; tone: string; label?: string }[]
+  llmUsed: boolean
+}
+
 export interface ChatSection {
   title: string
   body?: string
@@ -216,6 +266,15 @@ export const api = {
   getState: () => request<AppState>('/state'),
   getKnowledge: () => request<KnowledgeResponse>('/knowledge'),
   getQuestionsFull: () => request<{ items: FullQuestion[] }>('/questions/full'),
+  getPassages: () => request<{ items: PassageSummary[] }>('/passages'),
+  getPassageSentences: (passageId: string) =>
+    request<{ passage: Omit<PassageSummary, 'char_count' | 'preview' | 'sentence_count' | 'question_count' | 'imported'>; items: PassageSentence[] }>(
+      `/passages/${encodeURIComponent(passageId)}/sentences`,
+    ),
+  getSentenceBreakdown: (sentenceId: string) =>
+    request<SentenceBreakdown>(
+      `/sentences/${encodeURIComponent(sentenceId)}/breakdown`,
+    ),
   importExam: (payload: ImportExamPayload) =>
     request<ImportExamResponse>('/exams/import', {
       method: 'POST',
@@ -243,7 +302,7 @@ export const api = {
       }),
     }),
 
-  chat: (message: string, contextId = '2024_en1_t1') =>
+  chat: (message: string, contextId: string) =>
     request<ChatWorkflow>('/workflow/chat', {
       method: 'POST',
       body: JSON.stringify({ message, context_id: contextId }),

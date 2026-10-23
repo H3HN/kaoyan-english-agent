@@ -21,8 +21,15 @@ import { SectionHeader } from '../components/SectionHeader'
 import { Tag, toneStyles } from '../components/Tag'
 import { CitationList, ToolTrace } from '../components/ToolTrace'
 import { useToast } from '../components/Toast'
-import { SENTENCE_ANALYSES, type TreeNode } from '../data/content'
-import { api, type SentenceWorkflow, type VocabEntry } from '../lib/api'
+import type { TreeNode } from '../data/content'
+import {
+  api,
+  type PassageSentence,
+  type PassageSummary,
+  type SentenceBreakdown,
+  type SentenceWorkflow,
+  type VocabEntry,
+} from '../lib/api'
 import { useAppStore } from '../store/AppStore'
 
 const STEP_LABELS = [
@@ -66,7 +73,14 @@ function TreeNodeView({ node, depth = 0 }: { node: TreeNode; depth?: number }) {
 }
 
 export default function SentencePage() {
-  const [activeId, setActiveId] = useState('s4')
+  const [passages, setPassages] = useState<PassageSummary[]>([])
+  const [passageId, setPassageId] = useState('')
+  const [sentences, setSentences] = useState<PassageSentence[]>([])
+  const [sentenceId, setSentenceId] = useState('')
+  const [breakdown, setBreakdown] = useState<SentenceBreakdown | null>(null)
+  const [breakdownStatus, setBreakdownStatus] = useState<
+    'loading' | 'ready' | 'error'
+  >('loading')
   const [activeStep, setActiveStep] = useState(0)
   const [agentData, setAgentData] = useState<SentenceWorkflow | null>(null)
   const [agentStatus, setAgentStatus] = useState<'loading' | 'ready' | 'error'>(
@@ -77,10 +91,78 @@ export default function SentencePage() {
 
   useEffect(() => {
     let alive = true
+    api
+      .getPassages()
+      .then((response) => {
+        if (!alive) return
+        setPassages(response.items)
+        if (response.items[0]) setPassageId(response.items[0].id)
+      })
+      .catch(() => {
+        if (alive) toast('无法读取文章列表，请检查后端服务。', 'error')
+      })
+    return () => {
+      alive = false
+    }
+  }, [toast])
+
+  useEffect(() => {
+    if (!passageId) return
+    let alive = true
+    setSentences([])
+    setSentenceId('')
+    setBreakdown(null)
+    setActiveStep(0)
+    api
+      .getPassageSentences(passageId)
+      .then((response) => {
+        if (!alive) return
+        setSentences(response.items)
+        const longest = response.items.reduce<PassageSentence | null>(
+          (best, item) =>
+            !best || item.word_count > best.word_count ? item : best,
+          null,
+        )
+        const first = longest ?? response.items[0]
+        if (first) setSentenceId(first.id)
+      })
+      .catch(() => {
+        if (alive) toast('无法读取该文章的句子。', 'error')
+      })
+    return () => {
+      alive = false
+    }
+  }, [passageId, toast])
+
+  useEffect(() => {
+    if (!sentenceId) return
+    let alive = true
+    setBreakdown(null)
+    setBreakdownStatus('loading')
+    setActiveStep(0)
+    api
+      .getSentenceBreakdown(sentenceId)
+      .then((data) => {
+        if (!alive) return
+        setBreakdown(data)
+        setBreakdownStatus('ready')
+      })
+      .catch(() => {
+        if (!alive) return
+        setBreakdownStatus('error')
+      })
+    return () => {
+      alive = false
+    }
+  }, [sentenceId])
+
+  useEffect(() => {
+    if (!sentenceId) return
+    let alive = true
     setAgentStatus('loading')
     setAgentData(null)
     api
-      .runSentence(activeId)
+      .runSentence(sentenceId)
       .then((data) => {
         if (!alive) return
         setAgentData(data)
@@ -93,7 +175,49 @@ export default function SentencePage() {
     return () => {
       alive = false
     }
-  }, [activeId])
+  }, [sentenceId])
+
+  const currentPassage = passages.find((item) => item.id === passageId)
+  const currentSentence = sentences.find((item) => item.id === sentenceId)
+  const placeholder: SentenceBreakdown = {
+    id: sentenceId,
+    index: currentSentence?.index ?? 1,
+    source: currentSentence?.source ?? '',
+    original: currentSentence?.text ?? '',
+    wordCount: currentSentence?.word_count ?? 0,
+    isLong: currentSentence?.is_long ?? false,
+    main: currentSentence?.text ?? '正在读取句子…',
+    mainNote:
+      breakdownStatus === 'loading'
+        ? '正在请求 DeepSeek 生成五步拆解，首次约 5–10 秒。'
+        : '当前未能生成拆解，请稍后重试。',
+    clauseNote: '',
+    clauses: [],
+    modifiers: [],
+    translation: '',
+    translationLayers: [],
+    grammar: [],
+    examPoints: [],
+    tree: currentSentence
+      ? [{ role: '整句', label: currentSentence.text }]
+      : [],
+    segments: currentSentence
+      ? [{ text: currentSentence.text, tone: 'slate' }]
+      : [],
+    llmUsed: false,
+  }
+  const analysis = breakdown ?? placeholder
+  const wordCount = analysis.wordCount || currentSentence?.word_count || 0
+  const legendItems = useMemo(() => {
+    const map = new Map<string, string>()
+    analysis.segments.forEach((segment) => {
+      if (segment.label) map.set(segment.label, segment.tone)
+    })
+    return Array.from(map.entries())
+  }, [analysis.segments])
+  const treeNodes = analysis.tree.length
+    ? analysis.tree
+    : [{ role: '整句', label: analysis.original }]
 
   const handleArchiveWord = (entry: VocabEntry) => {
     const result = addWord({
@@ -104,21 +228,6 @@ export default function SentencePage() {
     })
     toast(result.message, result.ok ? 'success' : 'info')
   }
-
-  const analysis =
-    SENTENCE_ANALYSES.find((item) => item.id === activeId) ??
-    SENTENCE_ANALYSES[SENTENCE_ANALYSES.length - 1]
-  const wordCount = useMemo(
-    () => analysis.original.split(/\s+/).filter(Boolean).length,
-    [analysis.original],
-  )
-  const legendItems = useMemo(() => {
-    const map = new Map<string, string>()
-    analysis.segments.forEach((segment) => {
-      if (segment.label) map.set(segment.label, segment.tone)
-    })
-    return Array.from(map.entries())
-  }, [analysis.segments])
 
   return (
     <div className="space-y-6">
@@ -136,45 +245,65 @@ export default function SentencePage() {
         }
       />
 
-      <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="mr-1 text-[11px] font-medium text-slate-400">
-            例句
+          <span className="text-[11px] font-medium text-slate-400">文章</span>
+          <select
+            value={passageId}
+            onChange={(event) => setPassageId(event.target.value)}
+            aria-label="选择文章"
+            className="h-9 max-w-[280px] rounded-lg border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 outline-none"
+          >
+            {passages.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.year} {item.exam_type} · Text {item.text_number}
+                {item.imported ? '（导入）' : '（示例）'}
+              </option>
+            ))}
+          </select>
+
+          <span className="ml-2 text-[11px] font-medium text-slate-400">
+            句子
           </span>
-          {SENTENCE_ANALYSES.map((item) => {
-            const isActive = item.id === analysis.id
-            return (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => {
-                  setActiveId(item.id)
-                  setActiveStep(0)
-                }}
-                className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium transition-colors ${
-                  isActive
-                    ? 'bg-slate-800 text-white'
-                    : 'bg-slate-50 text-slate-500 hover:bg-slate-100 hover:text-slate-800'
-                }`}
-                aria-pressed={isActive}
-              >
-                第 {item.index} 句
-                <span
-                  className={`h-1.5 w-1.5 rounded-full ${
-                    isActive
-                      ? 'bg-emerald-400'
-                      : item.isLong
-                        ? 'bg-amber-400'
-                        : 'bg-slate-300'
-                  }`}
-                />
-              </button>
-            )
-          })}
+          <select
+            value={sentenceId}
+            onChange={(event) => {
+              setSentenceId(event.target.value)
+              setActiveStep(0)
+            }}
+            aria-label="选择句子"
+            className="h-9 max-w-[320px] rounded-lg border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 outline-none"
+          >
+            {sentences.map((item) => (
+              <option key={item.id} value={item.id}>
+                第 {item.index} 句 · {item.word_count} 词
+                {item.is_long ? ' · 长难句' : ''}
+              </option>
+            ))}
+          </select>
+
+          {breakdownStatus === 'loading' ? (
+            <span className="inline-flex items-center gap-1.5 text-[11px] text-slate-400">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              正在生成拆解
+            </span>
+          ) : null}
         </div>
-        <div className="flex items-center gap-2 text-[11px] text-slate-400">
-          <Tag tone="blue">2024 英语一</Tag>
-          <span>Text 1 · {wordCount} 词</span>
+
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <Tag tone="blue">
+              {currentPassage?.year} {currentPassage?.exam_type}
+            </Tag>
+            <span className="text-[11px] text-slate-400">
+              Text {currentPassage?.text_number} · {currentPassage?.question_count}{' '}
+              题 · {sentences.length} 句
+            </span>
+          </div>
+          <div className="flex items-center gap-2 text-[11px] text-slate-400">
+            <span>{wordCount} 词</span>
+            {analysis.llmUsed ? <Tag tone="violet">DeepSeek 拆解</Tag> : null}
+          </div>
         </div>
       </div>
 
@@ -191,7 +320,7 @@ export default function SentencePage() {
         <div className="py-7">
           <p className="whitespace-pre-wrap font-serif text-[20px] leading-[1.95] tracking-[-0.01em] text-slate-900 sm:text-[23px]">
             {analysis.segments.map((segment, index) => {
-              const styles = toneStyles[segment.tone]
+              const styles = toneStyles[segment.tone as keyof typeof toneStyles]
               const plain = segment.tone === 'slate'
               return (
                 <span
@@ -208,16 +337,18 @@ export default function SentencePage() {
               )
             })}
           </p>
-          <div className="mt-4 flex flex-wrap items-center gap-2">
-            <span className="text-[10px] font-medium uppercase tracking-[0.14em] text-slate-400">
-              结构标记
-            </span>
-            {legendItems.map(([label, tone]) => (
-              <Tag key={label} tone={tone as keyof typeof toneStyles} dot>
-                {label}
-              </Tag>
-            ))}
-          </div>
+          {legendItems.length > 0 ? (
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <span className="text-[10px] font-medium uppercase tracking-[0.14em] text-slate-400">
+                结构标记
+              </span>
+              {legendItems.map(([label, tone]) => (
+                <Tag key={label} tone={tone as keyof typeof toneStyles} dot>
+                  {label}
+                </Tag>
+              ))}
+            </div>
+          ) : null}
         </div>
 
         <div className="border-t border-slate-100 pt-6">
@@ -305,7 +436,7 @@ export default function SentencePage() {
                   ))
                 ) : (
                   <div className="rounded-lg border border-dashed border-slate-200 bg-white px-4 py-5 text-center text-xs text-slate-400">
-                    本句没有从句。主干之外的信息由介词短语承担。
+                    当前拆解未标注独立从句，可结合主干与修饰成分查看。
                   </div>
                 )}
               </div>
@@ -313,6 +444,11 @@ export default function SentencePage() {
 
             {activeStep === 2 ? (
               <div className="mt-4 space-y-2.5">
+                {analysis.modifiers.length === 0 ? (
+                  <div className="rounded-lg border border-dashed border-slate-200 bg-white px-4 py-5 text-center text-xs text-slate-400">
+                    当前拆解未标注额外修饰成分。
+                  </div>
+                ) : null}
                 {analysis.modifiers.map((modifier) => (
                   <div
                     key={modifier.text}
@@ -336,7 +472,12 @@ export default function SentencePage() {
 
             {activeStep === 3 ? (
               <div className="mt-4 space-y-2">
-                {analysis.translationLayers.map((layer, index) => (
+                {(analysis.translationLayers.length
+                  ? analysis.translationLayers
+                  : analysis.translation
+                    ? [analysis.translation]
+                    : []
+                ).map((layer, index) => (
                   <div key={layer} className="flex items-center gap-3">
                     <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-white text-[10px] font-semibold text-slate-400 ring-1 ring-slate-200">
                       {index + 1}
@@ -352,7 +493,12 @@ export default function SentencePage() {
             {activeStep === 4 ? (
               <div className="mt-4 grid gap-4 lg:grid-cols-2">
                 <div className="space-y-2">
-                  {analysis.grammar.map((point) => (
+                  {analysis.grammar.length === 0 ? (
+                  <div className="rounded-lg border border-dashed border-slate-200 bg-white px-4 py-5 text-center text-xs text-slate-400">
+                    当前拆解未标注独立语法点。
+                  </div>
+                ) : null}
+                {analysis.grammar.map((point) => (
                     <div
                       key={point.name}
                       className="rounded-lg border border-slate-200 bg-white px-3.5 py-3"
@@ -371,7 +517,10 @@ export default function SentencePage() {
                     名师考点
                   </p>
                   <ul className="mt-2.5 space-y-2">
-                    {analysis.examPoints.map((point) => (
+                    {(analysis.examPoints.length
+                      ? analysis.examPoints
+                      : ['先找谓语，再判断从句修饰对象。']
+                    ).map((point) => (
                       <li
                         key={point}
                         className="flex items-start gap-2 text-[11px] leading-relaxed text-amber-900/80"
@@ -506,7 +655,7 @@ export default function SentencePage() {
               </span>
             </div>
             <div className="space-y-2">
-              {analysis.tree.map((node, index) => (
+              {treeNodes.map((node, index) => (
                 <TreeNodeView key={`${node.label}-${index}`} node={node} />
               ))}
             </div>
@@ -520,7 +669,7 @@ export default function SentencePage() {
               <span className="absolute inset-y-0 left-0 w-1 bg-blue-500" />
               <Quote className="h-4 w-4 text-blue-200" />
               <p className="mt-2 text-sm leading-8 text-slate-700">
-                {analysis.translation}
+                {analysis.translation || '当前未生成译文。'}
               </p>
             </div>
           </div>
@@ -530,7 +679,10 @@ export default function SentencePage() {
             <div className="relative overflow-hidden rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
               <span className="absolute inset-y-0 left-0 w-1 bg-amber-500" />
               <div className="space-y-3">
-                {analysis.examPoints.map((point, index) => (
+                {(analysis.examPoints.length
+                  ? analysis.examPoints
+                  : ['先找谓语，再判断从句修饰对象。']
+                ).map((point, index) => (
                   <div key={point} className="flex items-start gap-3">
                     <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-amber-50 text-[10px] font-bold text-amber-700">
                       {index + 1}

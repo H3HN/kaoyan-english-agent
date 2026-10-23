@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   ArrowRight,
   CheckCircle2,
+  Loader2,
   Plus,
   XCircle,
 } from 'lucide-react'
@@ -10,17 +11,14 @@ import { ExamImportForm } from '../components/ExamImportForm'
 import { CitationList, ToolTrace } from '../components/ToolTrace'
 import { Tag, type Tone } from '../components/Tag'
 import { useToast } from '../components/Toast'
-import {
-  getPassage,
-  questions as builtinQuestions,
-  type OptionKey,
-} from '../data/content'
+import type { QuestionType } from '../data/content'
 import { api, type FullQuestion, type OptionWorkflow } from '../lib/api'
 import { useAppStore } from '../store/AppStore'
 
+type OptionKey = 'A' | 'B' | 'C' | 'D'
 const optionKeys: OptionKey[] = ['A', 'B', 'C', 'D']
 
-type OptionQuestion = (typeof builtinQuestions)[number] & { passage?: string }
+type OptionQuestion = FullQuestion
 
 interface PassageGroup {
   key: string
@@ -85,20 +83,15 @@ function buildParagraphs(text: string) {
   return groups
 }
 
-function toOptionQuestion(question: FullQuestion) {
-  return question as unknown as OptionQuestion
-}
-
 export default function OptionsPage() {
-  const [allQuestions, setAllQuestions] =
-    useState<OptionQuestion[]>(builtinQuestions)
-  const initial = builtinQuestions[0]
+  const [allQuestions, setAllQuestions] = useState<OptionQuestion[]>([])
   const [selection, setSelection] = useState({
-    year: initial.year,
-    examType: initial.examType,
-    textNumber: initial.textNumber,
+    year: 0,
+    examType: '',
+    textNumber: 0,
   })
-  const [activeQuestionId, setActiveQuestionId] = useState(initial.id)
+  const [activeQuestionId, setActiveQuestionId] = useState('')
+  const [loadError, setLoadError] = useState(false)
   const [attempts, setAttempts] = useState<Record<string, Attempt>>({})
   const [selected, setSelected] = useState<OptionKey | null>(null)
   const [showAnalysis, setShowAnalysis] = useState(false)
@@ -115,17 +108,26 @@ export default function OptionsPage() {
     api
       .getQuestionsFull()
       .then((response) => {
-        const builtinIds = new Set(builtinQuestions.map((item) => item.id))
-        const extra = response.items
-          .filter((item) => !builtinIds.has(item.id))
-          .map(toOptionQuestion)
-        if (extra.length === 0) return
-        setAllQuestions((prev) => {
-          const existing = new Set(prev.map((item) => item.id))
-          return [...prev, ...extra.filter((item) => !existing.has(item.id))]
-        })
+        setAllQuestions(response.items)
+        const imported = response.items
+          .filter((item) => item.id.startsWith('auto_'))
+          .sort(
+            (a, b) =>
+              b.year - a.year ||
+              a.textNumber - b.textNumber ||
+              a.number - b.number,
+          )
+        const first = imported[0] ?? response.items[0]
+        if (first) {
+          setSelection({
+            year: first.year,
+            examType: first.examType,
+            textNumber: first.textNumber,
+          })
+          setActiveQuestionId(first.id)
+        }
       })
-      .catch(() => {})
+      .catch(() => setLoadError(true))
   }, [searchParams])
 
   useEffect(() => {
@@ -158,7 +160,6 @@ export default function OptionsPage() {
         textNumber: first.textNumber,
         passage:
           chosen.find((item) => item.passage)?.passage ??
-          getPassage(first.passageId)?.passage ??
           first.sourceSentence,
         questions: chosen,
       }
@@ -244,7 +245,7 @@ export default function OptionsPage() {
 
   const applyImported = (imported: FullQuestion[]) => {
     if (imported.length === 0) return
-    const mapped = imported.map(toOptionQuestion)
+    const mapped = imported
     setAllQuestions((prev) => {
       const existing = new Set(prev.map((item) => item.id))
       return [...prev, ...mapped.filter((item) => !existing.has(item.id))]
@@ -271,7 +272,7 @@ export default function OptionsPage() {
     const isCorrect = selected === activeQuestion.correctAnswer
     addRecord({
       questionId: activeQuestion.id,
-      questionType: activeQuestion.questionType,
+      questionType: activeQuestion.questionType as QuestionType,
       userAnswer: selected,
       correctAnswer: activeQuestion.correctAnswer,
     })
@@ -294,8 +295,15 @@ export default function OptionsPage() {
 
   if (!currentGroup || !activeQuestion) {
     return (
-      <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">
-        暂无真题
+      <div className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white p-8 text-sm text-slate-500">
+        {loadError ? (
+          '无法读取题库，请确认 FastAPI 已启动。'
+        ) : (
+          <>
+            <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
+            正在加载题库…
+          </>
+        )}
       </div>
     )
   }

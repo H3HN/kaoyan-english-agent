@@ -2,9 +2,13 @@ __pycache__/
 *.pyc
 *.pyo
 .env
-data/
-*.json
+kaoyan_agent/data/
 .DS_Store
 .idea/
 .vscode/
-*.log5f64312d1398793934adba9e09b3a45d.png
+*.log
+.venv/
+venv/
+server/data/app.db
+server/data/app.db-wal
+server/data/app.db-shm

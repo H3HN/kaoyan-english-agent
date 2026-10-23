@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
 import {
-  ArrowUpRight,
   BookOpen,
   CalendarDays,
   GitBranch,
@@ -62,19 +61,19 @@ const presetPrompts = [
     icon: GitBranch,
     title: '解析这个句子的从句',
     description: '按五步法拆主干与嵌套',
-    prompt: '请按五步法解析这个句子的从句：What remains clear is that the technology which once seemed confined to science fiction has become part of our daily lives.',
+    prompt: '请按五步法解析当前上下文中的长难句，标出主干、从句和修饰。',
   },
   {
     icon: Languages,
     title: '提炼本段核心词',
     description: '筛出大纲词与高频搭配',
-    prompt: '请提炼这段阅读里的核心词，并区分大纲词与高频搭配：The rise of artificial intelligence has prompted both excitement and anxiety in equal measure.',
+    prompt: '请提炼当前上下文中的核心词，区分大纲词与熟词僻义。',
   },
   {
     icon: Target,
     title: '分析这道题的错误选项',
     description: '标注陷阱并给出排除路径',
-    prompt: '请分析这道主旨题的错误选项：What is the main idea of the passage? A. AI will definitely create more jobs... D. AI will soon replace all human workers.',
+    prompt: '请分析当前上下文中第一道题的四个选项，标注陷阱类型。',
   },
   {
     icon: CalendarDays,
@@ -282,7 +281,7 @@ function buildReply(input: string): Omit<ChatMessage, 'id' | 'role'> {
 
 function AssistantBubble({ message }: { message: ChatMessage }) {
   return (
-    <div className="max-w-[94%]">
+    <div className="w-full max-w-4xl">
       <div className="mb-1.5 flex items-center gap-2">
         <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-800 text-white">
           <Sparkles className="h-3.5 w-3.5" />
@@ -291,45 +290,50 @@ function AssistantBubble({ message }: { message: ChatMessage }) {
           研英 Agent
         </span>
       </div>
-      <div className="rounded-2xl rounded-tl-md border border-slate-200 bg-slate-50/80 px-4 py-3.5">
+      <div className="rounded-2xl rounded-tl-md border border-slate-200 bg-slate-50/80 p-4">
         {message.intro ? (
           <p className="text-[13px] leading-7 text-slate-700">
             {message.intro}
           </p>
         ) : null}
-        {message.sections?.map((section) => (
-          <div
-            key={section.title}
-            className="mt-3 border-t border-slate-200/80 pt-3 first:mt-0 first:border-0 first:pt-0"
-          >
-            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
-              {section.title}
-            </p>
-            {section.body ? (
-              <p className="mt-1.5 text-xs leading-6 text-slate-600">
-                {section.body}
-              </p>
-            ) : null}
-            {section.items ? (
-              <ul className="mt-2 space-y-1.5">
-                {section.items.map((item) => (
-                  <li
-                    key={item}
-                    className="flex items-start gap-2 text-xs leading-6 text-slate-600"
-                  >
-                    <span className="mt-2.5 h-1 w-1 shrink-0 rounded-full bg-slate-400" />
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            ) : null}
-            {section.code ? (
-              <pre className="mt-2 overflow-x-auto rounded-lg border border-slate-200 bg-white px-3 py-2.5 font-serif text-[12.5px] leading-6 whitespace-pre-wrap text-slate-700">
-                {section.code}
-              </pre>
-            ) : null}
+
+        {message.sections?.length ? (
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            {message.sections.map((section) => (
+              <div
+                key={section.title}
+                className="rounded-lg border border-slate-200 bg-white p-3"
+              >
+                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+                  {section.title}
+                </p>
+                {section.body ? (
+                  <p className="mt-1.5 text-xs leading-6 text-slate-600">
+                    {section.body}
+                  </p>
+                ) : null}
+                {section.items ? (
+                  <ul className="mt-2 space-y-1.5">
+                    {section.items.map((item) => (
+                      <li
+                        key={item}
+                        className="flex items-start gap-2 text-xs leading-6 text-slate-600"
+                      >
+                        <span className="mt-2.5 h-1 w-1 shrink-0 rounded-full bg-slate-400" />
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+                {section.code ? (
+                  <pre className="mt-2 overflow-x-auto rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 font-serif text-[12.5px] leading-6 whitespace-pre-wrap text-slate-700">
+                    {section.code}
+                  </pre>
+                ) : null}
+              </div>
+            ))}
           </div>
-        ))}
+        ) : null}
 
         {message.tools?.length || message.citations?.length ? (
           <div className="mt-3 rounded-lg border border-slate-200 bg-white px-3 py-2.5">
@@ -384,6 +388,7 @@ export default function ChatPage() {
   const [input, setInput] = useState('')
   const [typing, setTyping] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
   const counter = useRef(0)
   const { connected, refresh } = useAppStore()
   const [contextId, setContextId] = useState<string>(CONTEXTS[0].id)
@@ -396,6 +401,13 @@ export default function ChatPage() {
       node.scrollTop = node.scrollHeight
     }
   }, [messages, typing])
+
+  useEffect(() => {
+    const node = textareaRef.current
+    if (!node) return
+    node.style.height = 'auto'
+    node.style.height = `${Math.min(node.scrollHeight, 112)}px`
+  }, [input])
 
   const send = async (raw?: string) => {
     const text = (raw ?? input).trim()
@@ -456,57 +468,32 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">
-            AI COPILOT
-          </p>
-          <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900">
-            AI 对话
-          </h1>
-        </div>
-        <Tag tone="slate">{context.label}</Tag>
-      </div>
-
-      <div className="grid gap-5 lg:h-[calc(100dvh-130px)] lg:grid-cols-[280px_minmax(0,1fr)]">
-        <aside className="order-2 space-y-4 lg:order-1 lg:h-full lg:overflow-y-auto lg:pr-1 scrollbar-thin">
-          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-slate-900">快捷提问</h2>
-            </div>
-            <div className="mt-3 space-y-1.5">
-              {presetPrompts.map((preset) => {
-                const Icon = preset.icon
-                return (
-                  <button
-                    key={preset.title}
-                    type="button"
-                    onClick={() => void send(preset.prompt)}
-                    disabled={typing}
-                    className="group flex w-full items-start gap-3 rounded-lg border border-transparent px-2.5 py-2.5 text-left transition-colors hover:border-slate-200 hover:bg-slate-50 disabled:opacity-50"
-                  >
-                    <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-slate-100 text-slate-500 group-hover:bg-white group-hover:text-slate-700">
-                      <Icon className="h-3.5 w-3.5" />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-xs font-medium text-slate-700">
-                        {preset.title}
-                      </span>
-                    </span>
-                    <ArrowUpRight className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-300 opacity-0 transition-opacity group-hover:opacity-100" />
-                  </button>
-                )
-              })}
+    <div className="h-[calc(100dvh-104px)] min-h-[560px] lg:h-[calc(100dvh-64px)]">
+      <section className="flex h-full flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <header className="flex min-h-14 flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-4 py-2 sm:px-5">
+          <div className="flex items-center gap-3">
+            <span className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-slate-800 text-white">
+              <Sparkles className="h-4 w-4" />
+              <span
+                className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white ${
+                  connected ? 'bg-emerald-400' : 'bg-amber-400'
+                }`}
+              />
+            </span>
+            <div className="flex items-center gap-2">
+              <h1 className="text-sm font-semibold text-slate-900">
+                研英 Agent
+              </h1>
+              <Tag tone={connected ? 'emerald' : 'amber'} dot>
+                {connected ? '后端已连接' : '本地示例'}
+              </Tag>
             </div>
           </div>
 
-          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-slate-900">
-                当前上下文
-              </h2>
-              <Tag tone="blue">已载入</Tag>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="hidden items-center gap-1.5 md:flex">
+              <Tag tone="emerald">长难句 {context.longSentences}</Tag>
+              <Tag tone="amber">题目 {context.questions}</Tag>
             </div>
             <select
               value={contextId}
@@ -515,7 +502,7 @@ export default function ChatPage() {
                 toast('上下文已切换。', 'info')
               }}
               aria-label="选择上下文"
-              className="mt-3 w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-xs font-medium text-slate-700 outline-none transition-colors focus:border-slate-300"
+              className="h-8 max-w-[170px] rounded-lg border border-slate-200 bg-white px-2 text-[11px] font-medium text-slate-600 outline-none"
             >
               {CONTEXTS.map((item) => (
                 <option key={item.id} value={item.id}>
@@ -523,140 +510,99 @@ export default function ChatPage() {
                 </option>
               ))}
             </select>
-            <div className="mt-3 flex flex-wrap gap-1.5">
-              <Tag tone="emerald">长难句 {context.longSentences}</Tag>
-              <Tag tone="amber">题目 {context.questions}</Tag>
-            </div>
-          </div>
-        </aside>
-
-        <section className="order-1 flex h-[calc(100dvh-200px)] min-h-[420px] flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm lg:order-2 lg:h-full">
-          <header className="flex items-center justify-between gap-3 border-b border-slate-200 px-5 py-3.5">
-            <div className="flex items-center gap-3">
-              <span className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-slate-800 text-white">
-                <Sparkles className="h-4 w-4" />
-                <span className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white ${connected ? 'bg-emerald-400' : 'bg-amber-400'}`} />
-              </span>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h2 className="text-sm font-semibold text-slate-900">
-                    研英 Agent
-                  </h2>
-                  <Tag tone={connected ? 'emerald' : 'amber'} dot>
-                    {connected ? '后端已连接' : '本地示例'}
-                  </Tag>
-                </div>
-              </div>
-            </div>
             <button
               type="button"
               onClick={clearChat}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1.5 text-[11px] font-medium text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-800"
+              className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 text-[11px] font-medium text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-800"
             >
               <RotateCcw className="h-3 w-3" />
               清空
             </button>
-          </header>
-
-          <div
-            ref={scrollRef}
-            className="scrollbar-thin flex-1 space-y-5 overflow-y-auto px-4 py-5 sm:px-5"
-          >
-            {messages.map((message) =>
-              message.role === 'assistant' ? (
-                <AssistantBubble key={message.id} message={message} />
-              ) : (
-                <div key={message.id} className="flex justify-end">
-                  <div className="max-w-[82%] rounded-2xl rounded-br-md bg-slate-800 px-4 py-3 text-[13px] leading-7 text-white shadow-sm">
-                    {message.intro}
-                  </div>
-                </div>
-              ),
-            )}
-
-            {messages.length === 1 && !typing ? (
-              <div className="ml-10 flex flex-wrap gap-2">
-                {[
-                  {
-                    label: '拆解第 4 句',
-                    prompt:
-                      '请按五步法拆解 2024 英语一 Text 1 的第 4 句，并标出主干与从句。',
-                  },
-                  {
-                    label: '分析选项陷阱',
-                    prompt: '请分析这道主旨题的四个选项，标注陷阱类型。',
-                  },
-                  {
-                    label: '安排复习计划',
-                    prompt: '请根据我的单词本，安排本周的复习计划。',
-                  },
-                ].map((item) => (
-                  <button
-                    key={item.label}
-                    type="button"
-                    onClick={() => void send(item.prompt)}
-                    className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-800"
-                  >
-                    {item.label}
-                  </button>
-                ))}
-              </div>
-            ) : null}
-
-            {typing ? (
-              <div className="flex items-center gap-2.5">
-                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-800 text-white">
-                  <Sparkles className="h-3.5 w-3.5" />
-                </span>
-                <div className="flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-3 py-2">
-                  <span className="typing-dot h-1.5 w-1.5 rounded-full bg-slate-400" />
-                  <span
-                    className="typing-dot h-1.5 w-1.5 rounded-full bg-slate-400"
-                    style={{ animationDelay: '0.15s' }}
-                  />
-                  <span
-                    className="typing-dot h-1.5 w-1.5 rounded-full bg-slate-400"
-                    style={{ animationDelay: '0.3s' }}
-                  />
-                </div>
-              </div>
-            ) : null}
           </div>
+        </header>
 
-          <div className="border-t border-slate-200 bg-white px-4 py-3.5 sm:px-5">
-            <div className="flex items-end gap-2 rounded-xl border border-slate-200 bg-slate-50/70 p-2 transition-colors focus-within:border-slate-300 focus-within:bg-white">
-              <textarea
-                value={input}
-                onChange={(event) => setInput(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' && !event.shiftKey) {
-                    event.preventDefault()
-                    void send()
-                  }
-                }}
-                rows={2}
-                aria-label="向 Agent 提问"
-                placeholder="向 Agent 提问：解析此句从句、提炼核心词、分析选项…"
-                className="max-h-32 min-h-[44px] flex-1 resize-none bg-transparent px-2 py-2 text-sm leading-6 text-slate-800 outline-none placeholder:text-slate-400"
-              />
+        <div
+          ref={scrollRef}
+          className="scrollbar-thin flex-1 space-y-4 overflow-y-auto p-4 sm:p-6"
+        >
+          {messages.map((message) =>
+            message.role === 'assistant' ? (
+              <AssistantBubble key={message.id} message={message} />
+            ) : (
+              <div key={message.id} className="flex justify-end">
+                <div className="max-w-[82%] rounded-2xl rounded-br-md bg-slate-800 px-4 py-3 text-[13px] leading-7 text-white shadow-sm sm:max-w-2xl">
+                  {message.intro}
+                </div>
+              </div>
+            ),
+          )}
+
+          {typing ? (
+            <div className="flex items-center gap-2.5">
+              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-800 text-white">
+                <Sparkles className="h-3.5 w-3.5" />
+              </span>
+              <div className="flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-3 py-2">
+                <span className="typing-dot h-1.5 w-1.5 rounded-full bg-slate-400" />
+                <span
+                  className="typing-dot h-1.5 w-1.5 rounded-full bg-slate-400"
+                  style={{ animationDelay: '0.15s' }}
+                />
+                <span
+                  className="typing-dot h-1.5 w-1.5 rounded-full bg-slate-400"
+                  style={{ animationDelay: '0.3s' }}
+                />
+              </div>
+            </div>
+          ) : null}
+        </div>
+
+        <div className="border-t border-slate-200 bg-slate-50/50 p-3 sm:p-4">
+          <div className="mb-2 flex gap-1.5 overflow-x-auto pb-1">
+            {presetPrompts.map((preset) => (
               <button
+                key={preset.title}
                 type="button"
-                onClick={() => void send()}
-                disabled={!input.trim() || typing}
-                aria-label="发送消息"
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-800 text-white transition-colors hover:bg-slate-900 disabled:bg-slate-200 disabled:text-slate-400"
+                onClick={() => void send(preset.prompt)}
+                disabled={typing}
+                className="shrink-0 whitespace-nowrap rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-500 transition-colors hover:border-slate-300 hover:text-slate-800 disabled:opacity-50"
               >
-                <Send className="h-4 w-4" />
+                {preset.title}
               </button>
-            </div>
-            <div className="mt-2 flex flex-wrap items-center justify-between gap-2 px-1">
-              <p className="text-[10px] text-slate-400">
-                Enter 发送 · Shift + Enter 换行
-              </p>
-            </div>
+            ))}
           </div>
-        </section>
-      </div>
+
+          <div className="flex items-end gap-2">
+            <textarea
+              ref={textareaRef}
+              value={input}
+              onChange={(event) => setInput(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' && !event.shiftKey) {
+                  event.preventDefault()
+                  void send()
+                }
+              }}
+              rows={1}
+              aria-label="向 Agent 提问"
+              placeholder="向 Agent 提问：解析此句从句、提炼核心词、分析选项…"
+              className="max-h-28 min-h-[44px] flex-1 resize-none rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm leading-6 text-slate-800 outline-none transition-colors placeholder:text-slate-400 focus:border-slate-300"
+            />
+            <button
+              type="button"
+              onClick={() => void send()}
+              disabled={!input.trim() || typing}
+              aria-label="发送消息"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-800 text-white transition-colors hover:bg-slate-900 disabled:bg-slate-200 disabled:text-slate-400"
+            >
+              <Send className="h-4 w-4" />
+            </button>
+          </div>
+          <p className="mt-1.5 text-[10px] text-slate-400">
+            Enter 发送 · Shift + Enter 换行
+          </p>
+        </div>
+      </section>
     </div>
   )
 }

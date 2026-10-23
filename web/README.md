@@ -29,7 +29,7 @@ npm run preview
 | --- | --- |
 | `/` | 首页仪表盘 |
 | `/sentence` | 长难句拆解 |
-| `/options` | 选项陷阱分析 |
+| `/options` | 阅读真题训练 |
 | `/chat` | AI 对话 |
 | `/wordbook` | 单词本与复习 |
 | `/report` | 学习报告 |
@@ -44,7 +44,7 @@ npm run preview
 - AI 对话调用 `/api/workflow/chat`，应答由 FastAPI 工作流生成；后端不可用时自动退回本地示例。
 - 单词本通过 `/api/state`、`/api/wordbook` 与 SQLite 同步；`localStorage` 仅作离线兜底。
 
-AI 对话调用 `/api/workflow/chat`：FastAPI 先执行工具检索，DeepSeek 负责讲解；回答底部标记“DeepSeek 生成”。后端未配置 Key 或调用失败时自动回退。`web/src/lib/api.ts` 是唯一 API 客户端。
+AI 对话调用 `/api/workflow/chat`：FastAPI 先执行工具检索；长难句、选项、核心词、主旨等证据敏感问题直接返回确定性结果，熟词僻义与复习计划等开放讲解才使用 DeepSeek；回答底部标记“DeepSeek 生成”。后端未配置 Key 或调用失败时自动回退。`web/src/lib/api.ts` 是唯一 API 客户端。
 
 ## 设计约束
 

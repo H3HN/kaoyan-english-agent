@@ -19,7 +19,7 @@ import { useAppStore } from '../store/AppStore'
 const navItems = [
   { to: '/', label: '首页', icon: LayoutDashboard, end: true },
   { to: '/sentence', label: '长难句拆解', icon: ScanText },
-  { to: '/options', label: '选项陷阱分析', icon: Target },
+  { to: '/options', label: '阅读真题训练', icon: Target },
   { to: '/chat', label: 'AI 对话', icon: MessageSquareText },
   { to: '/wordbook', label: '单词本与复习', icon: BookMarked },
   { to: '/report', label: '学习报告', icon: BarChart3 },
@@ -30,7 +30,7 @@ const navItems = [
 const pageTitles: Record<string, string> = {
   '/': '研英智学 · 考研英语 Agent',
   '/sentence': '长难句拆解 · 研英智学',
-  '/options': '选项陷阱分析 · 研英智学',
+  '/options': '阅读真题训练 · 研英智学',
   '/chat': 'AI 对话 · 研英智学',
   '/wordbook': '单词本与复习 · 研英智学',
   '/report': '学习报告 · 研英智学',

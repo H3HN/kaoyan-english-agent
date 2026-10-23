@@ -265,6 +265,7 @@ def _run_chat_deterministic(
             ],
             "tool_trace": tool_trace,
             "citations": [],
+            "llm_policy": "deterministic",
         }
 
     # 2) 长难句
@@ -320,6 +321,7 @@ def _run_chat_deterministic(
             ],
             "tool_trace": tool_trace,
             "citations": citations,
+            "llm_policy": "deterministic",
         }
 
     # 3) 选项陷阱
@@ -370,10 +372,16 @@ def _run_chat_deterministic(
             ],
             "tool_trace": tool_trace,
             "citations": citations,
+            "llm_policy": "deterministic",
         }
 
     # 4) 熟词僻义
-    if "熟词僻义" in message or any(
+    wants_core_words = any(
+        key in message for key in ("核心词", "关键词", "生词", "词汇")
+    )
+    if (
+        "熟词僻义" in message and not wants_core_words
+    ) or any(
         word in text for word in ("address", "plant", "subject", "novel", "sound")
     ):
         words = extract_words(message)
@@ -406,6 +414,43 @@ def _run_chat_deterministic(
             "citations": [],
         }
 
+    # 5) 核心词提炼（上下文驱动）
+    if any(key in message for key in ("核心词", "关键词", "生词", "词汇")):
+        message_words = extract_words(message)
+        if message_words:
+            source_text = " ".join(message_words)
+        else:
+            source_text = " ".join(row["text"] for row in context_sentences)
+        vocabulary, vocab_trace = check_syllabus_vocab(conn, source_text)
+        tool_trace.append(vocab_trace)
+        hits = [item for item in vocabulary if item["in_syllabus"]]
+        hits.sort(
+            key=lambda item: (
+                item["rare_meaning"] is not None,
+                item["level"] == "核心",
+                item["exam_frequency"],
+            ),
+            reverse=True,
+        )
+        items = [
+            f"{item['word']}（{item['level']}，切片频次 {item['exam_frequency']}）：{item['basic_meaning']}"
+            + (f"；熟词僻义：{item['rare_meaning']}" if item["rare_meaning"] else "")
+            for item in hits[:8]
+        ] or ["当前上下文未命中大纲词。"]
+        return {
+            "intro": f"从当前篇章筛出 {len(hits)} 个大纲词，按核心度与切片频次排序。",
+            "sections": [
+                {"title": "核心词", "items": items},
+                {
+                    "title": "复习建议",
+                    "body": "优先记搭配与原句语境；可直接把上方词条加入单词本。",
+                },
+            ],
+            "tool_trace": tool_trace,
+            "citations": [],
+            "llm_policy": "deterministic",
+        }
+
     # 5) 复习计划
     if any(key in message for key in ("计划", "复习", "单词")):
         report = get_report(conn)
@@ -426,7 +471,7 @@ def _run_chat_deterministic(
                     "items": [
                         "周一 / 周三 / 周五各安排一次 15 分钟复习。",
                         "没记住的词明天再来一次；记住的词按 2、4、7、15、30 天拉开。",
-                        "周末用 2024 Text 1 做一次整篇回读，把词放回原句。",
+                        f"周末用 {passage['year']} {passage['exam_type']} Text {passage['text_number']} 做一次整篇回读，把词放回原句。",
                     ],
                 },
                 {
@@ -438,39 +483,50 @@ def _run_chat_deterministic(
             "citations": [],
         }
 
-    # 6) 段落主旨
+    # 7) 段落主旨
     if any(key in message for key in ("主旨", "总结", "段落", "态度")):
-        query = (
-            "climate change"
-            if passage["id"].startswith("2023")
-            else "artificial intelligence"
-        )
+        if passage["id"].startswith("2023"):
+            query = "climate change"
+            summary = {
+                "intro": "这段文字讨论气候变化，重点不在科普，而在“行动不足”与“后果不均”的张力。",
+                "structure": [
+                    "首句：气候变化需要政府、企业与个人协同行动。",
+                    "第二句：局部减排有进展，但总体趋势仍令人担忧。",
+                    "第三句：若不立即持续干预，本世纪末可能升温 3°C。",
+                    "末句：后果将由发展中国家弱势群体不成比例地承受。",
+                ],
+                "main": "气候变化的后果将由发展中国家弱势群体不成比例地承受，现有进展不足以扭转趋势。",
+                "attitude": [
+                    "态度偏担忧，强调行动的紧迫性。",
+                    "remains concerning 与 without immediate intervention 是态度信号。",
+                    "主旨题优先排除“已经完全解决”“只影响发达国家”这类选项。",
+                ],
+            }
+        else:
+            query = "artificial intelligence"
+            summary = {
+                "intro": "这段文字不是单纯介绍 AI，而是在“兴奋”与“焦虑”之间保持张力。",
+                "structure": [
+                    "首句总起：AI 同时引发 excitement 与 anxiety。",
+                    "第二句：支持者强调产业升级与新岗位。",
+                    "第三句：批评者警告岗位流失与重复性劳动。",
+                    "末句收束：技术已进入日常生活，并带来隐私、责任与能力定义的追问。",
+                ],
+                "main": "人工智能在带来产业变革的同时，也引发了就业、隐私与责任层面的深层争议。",
+                "attitude": [
+                    "谨慎中立，不是盲目乐观，也不是全盘否定。",
+                    "末句的 raising questions 说明作者更关心技术带来的未解问题。",
+                    "主旨题优先排除 definitely、all、only 这类绝对化概括。",
+                ],
+            }
         citations, search_trace = search_past_exams(conn, query=query, limit=2)
         tool_trace.append(search_trace)
         return {
-            "intro": "这段文字不是单纯介绍 AI，而是在“兴奋”与“焦虑”之间保持张力。主旨题要选的，是能同时覆盖两面的概括项。",
+            "intro": summary["intro"],
             "sections": [
-                {
-                    "title": "段落结构",
-                    "items": [
-                        "首句总起：AI 同时引发 excitement 与 anxiety。",
-                        "第二句：支持者强调产业升级与新岗位。",
-                        "第三句：批评者警告岗位流失与重复性劳动。",
-                        "末句收束：技术已进入日常生活，并带来隐私、责任与能力定义的追问。",
-                    ],
-                },
-                {
-                    "title": "一句话主旨",
-                    "body": "人工智能在带来产业变革的同时，也引发了就业、隐私与责任层面的深层争议。",
-                },
-                {
-                    "title": "作者态度",
-                    "items": [
-                        "谨慎中立，不是盲目乐观，也不是全盘否定。",
-                        "末句的 raising questions 说明作者更关心技术带来的未解问题。",
-                        "主旨题优先排除 definitely、all、only 这类绝对化概括。",
-                    ],
-                },
+                {"title": "段落结构", "items": summary["structure"]},
+                {"title": "一句话主旨", "body": summary["main"]},
+                {"title": "作者态度", "items": summary["attitude"]},
                 {
                     "title": "真题溯源",
                     "items": [
@@ -481,6 +537,7 @@ def _run_chat_deterministic(
             ],
             "tool_trace": tool_trace,
             "citations": citations,
+            "llm_policy": "deterministic",
         }
 
     # 7) 默认：能力与数据状态
@@ -525,6 +582,9 @@ def run_chat_workflow(
     break provenance or software state.
     """
     base = _run_chat_deterministic(conn, message, context_id)
+    if base.get("llm_policy") == "deterministic":
+        base["llm_used"] = False
+        return base
     if not is_configured():
         base["llm_used"] = False
         return base

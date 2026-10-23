@@ -61,7 +61,7 @@ npm run preview
 - 前端：只负责页面、交互与工具链可视化；通过 `web/src/lib/api.ts` 调用 `/api`。
 - 后端：SQLite 领域库、`check_syllabus_vocab` / `search_past_exams` / `add_to_vocab_book` / `record_trap_mistake` 四个工具，以及句子 / 选项 / 对话三类工作流。
 - 状态：单词本与答题记录写入 SQLite；前端仍保留 `localStorage` 作为离线兜底。
-- 生成层：工具检索与状态写入是确定性的；配置 `LLM_API_KEY` 后由 DeepSeek 负责讲解，`tool_trace` 与真题出处始终来自工具层，LLM 失败自动回退。
+- 生成层：工具检索与状态写入是确定性的；证据敏感问题直接返回工具结果，只有开放讲解使用 DeepSeek，`tool_trace` 与真题出处始终来自工具层，LLM 失败自动回退。
 - 真题导入：选项分析页「添加真题」支持手动录入，也支持公开 PDF URL 自动抽取文章/题目/选项；答案序列可选，未提供时标记为 AI 推断。
 - 数据：公共考研词库（BSD-3-Clause，去重后 5,064 条）与项目内置真题切片；频次是**当前切片语料内的出现次数**，不是 2010–2026 全量统计。
 

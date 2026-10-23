@@ -63,9 +63,10 @@ python scripts/auto_import.py --url https://example.com/2024.pdf \
 对话采用“工具层 + 生成层”两段式：
 
 1. 工具层先查大纲词、真题切片与单词本；
-2. DeepSeek 只拿到工具结果与出处，负责组织讲解；
-3. `tool_trace` 与 `citations` 由后端返回，不经过模型；
-4. Key 未配置或调用失败时，自动回退到确定性答案。
+2. 证据敏感意图（长难句拆解、选项分析、单词本归档）直接返回确定性结果，不让模型改写事实；
+3. 开放讲解意图（熟词僻义、复习计划）才交给 DeepSeek 组织语言；
+4. `tool_trace` 与 `citations` 由后端返回，不经过模型；
+5. Key 未配置或调用失败时，自动回退到确定性答案。
 
 配置 `server/.env`：
 

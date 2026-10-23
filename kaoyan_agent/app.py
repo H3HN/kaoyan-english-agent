@@ -262,9 +262,15 @@ def show_chat():
         st.rerun()
     st.markdown('<div class="section">快捷提问</div>', unsafe_allow_html=True)
     qc1,qc2,qc3 = st.columns(3)
-    if qc1.button("拆解长难句示例"): st.session_state.chat_history.append({"role":"user","content":"请拆解: The technology that once seemed confined to science fiction has become an inescapable part of our daily lives."}); st.rerun()
-    if qc2.button("解释偷换概念"): st.session_state.chat_history.append({"role":"user","content":"请解释考研英语中'偷换概念'这种选项陷阱"}); st.rerun()
-    if qc3.button("主旨题解题技巧"): st.session_state.chat_history.append({"role":"user","content":"主旨题的解题技巧是什么？"}); st.rerun()
+    def quick_ask(prompt):
+        st.session_state.chat_history.append({"role":"user","content":prompt})
+        with st.spinner("思考中..."):
+            resp = agent.chat(prompt)
+        st.session_state.chat_history.append({"role":"bot","content":resp})
+        st.rerun()
+    if qc1.button("拆解长难句示例"): quick_ask("请拆解: The technology that once seemed confined to science fiction has become an inescapable part of our daily lives.")
+    if qc2.button("解释偷换概念"): quick_ask("请解释考研英语中'偷换概念'这种选项陷阱")
+    if qc3.button("主旨题解题技巧"): quick_ask("主旨题的解题技巧是什么？")
 
 
 def show_wordbook():

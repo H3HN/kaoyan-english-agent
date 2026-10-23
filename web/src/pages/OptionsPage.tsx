@@ -147,17 +147,20 @@ export default function OptionsPage() {
     })
     return Array.from(map.entries()).map(([key, items]) => {
       const sorted = [...items].sort((a, b) => a.number - b.number)
-      const first = sorted[0]
+      const imported = sorted.filter((item) => item.id.startsWith('auto_'))
+      const chosen =
+        imported.length > sorted.length - imported.length ? imported : sorted
+      const first = chosen[0]
       return {
         key,
         year: first.year,
         examType: first.examType,
         textNumber: first.textNumber,
         passage:
-          sorted.find((item) => item.passage)?.passage ??
+          chosen.find((item) => item.passage)?.passage ??
           getPassage(first.passageId)?.passage ??
           first.sourceSentence,
-        questions: sorted,
+        questions: chosen,
       }
     })
   }, [allQuestions])

@@ -573,14 +573,15 @@ def auto_import_exam(payload: AutoImportRequest, conn: DB):
     batch = analyze_imported_questions_batch(passage_text, questions)
     analysis_source = "deepseek" if batch else "fallback"
     question_ids = []
-    for question in questions:
-        number = question["number"]
+    for index, question in enumerate(questions):
+        source_number = question["number"]
+        number = 21 + (payload.text_number - 1) * 5 + index
         source = _best_sentence(
             question.get("source_quote")
             or f"{question['content']} {question['options'][question['correct_answer']]}",
             sentence_rows,
         )
-        analyzed = (batch or {}).get(number)
+        analyzed = (batch or {}).get(source_number)
         if analyzed:
             analysis = analyzed["analysis"]
             question_type = analyzed["question_type"]

@@ -29,6 +29,8 @@ cd server
 
 首次启动自动初始化 `server/data/app.db`，导入 5,064 条考研词库、8 个真题句子切片、3 道题、8 条陷阱规则与演示学习数据。
 
+当前本地库另已导入 2023 / 2024 英语一完整阅读 8 篇、40 题，阅读训练页可直接切换 Text 1–4；清单见 [docs/IMPORTED-EXAMS.md](docs/IMPORTED-EXAMS.md)。
+
 ## 启动 React 工作台
 
 ```bash
@@ -68,6 +70,7 @@ npm run preview
 ## 文档
 
 - [前后端分离架构](docs/ARCHITECTURE.md)
+- [已导入真题清单](docs/IMPORTED-EXAMS.md)
 - [答辩演示与追问准备](docs/DEFENSE-NOTES.md)
 - [后端运行说明](server/README.md)
 - [前端运行说明](web/README.md)

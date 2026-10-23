@@ -141,6 +141,7 @@ PDF URL / 本地 PDF / 原始文本
   → 按 Text N 切片
   → DeepSeek 结构化 passage + questions + options
   → 可选答案序列覆盖
+  → 题号按 Text 映射为 21–25 / 26–30 / 31–35 / 36–40
   → 批量生成选项陷阱分析
   → 写入 SQLite
 ```

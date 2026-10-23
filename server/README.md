@@ -30,7 +30,7 @@ cd server
 
 - 公开 PDF URL：`{"url": "...pdf", "year": 2024, "exam_type": "英语一", "text_number": 1, "answer_key": "21-25 BCDAB"}`
 - 原始文本：把 `url` 换成 `text`
-- 自动抽取 Text N 的文章、5 道题与选项
+- 自动抽取 Text N 的文章、5 道题与选项；题号按 21–25 / 26–30 / 31–35 / 36–40 自动映射
 - 提供答案序列时按序列覆盖；未提供时使用模型推断，返回 `answer_source=inferred`
 - 批量生成选项陷阱分析；结果写入 SQLite
 

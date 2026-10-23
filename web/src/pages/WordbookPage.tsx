@@ -7,6 +7,7 @@ import {
   Eye,
   EyeOff,
   Layers,
+  Play,
   Plus,
   RefreshCw,
   Trash2,
@@ -36,6 +37,7 @@ export default function WordbookPage() {
     useAppStore()
   const [tab, setTab] = useState<Tab>('all')
   const [reviewedIds, setReviewedIds] = useState<string[]>([])
+  const [sessionIds, setSessionIds] = useState<string[] | null>(null)
   const [revealed, setRevealed] = useState(false)
   const [form, setForm] = useState({ spelling: '', meaning: '', source: '' })
   const toast = useToast()
@@ -45,13 +47,36 @@ export default function WordbookPage() {
     words.length > 0
       ? words.reduce((sum, word) => sum + word.familiarity, 0) / words.length
       : 0
-  const reviewQueue = useMemo(
-    () => dueWords.filter((word) => !reviewedIds.includes(word.id)),
-    [dueWords, reviewedIds],
-  )
+  const reviewQueue = useMemo(() => {
+    if (sessionIds) {
+      const byId = new Map(words.map((word) => [word.id, word]))
+      return sessionIds
+        .filter((id) => !reviewedIds.includes(id))
+        .map((id) => byId.get(id))
+        .filter((word) => word !== undefined) as typeof words
+    }
+    return dueWords.filter((word) => !reviewedIds.includes(word.id))
+  }, [sessionIds, words, dueWords, reviewedIds])
   const currentWord = reviewQueue[0]
   const reviewedCount = reviewedIds.length
-  const totalDue = reviewedCount + dueWords.length
+  const totalDue = sessionIds ? sessionIds.length : reviewedCount + dueWords.length
+
+  const startFreeReview = () => {
+    if (words.length === 0) {
+      toast('单词本还是空的，先添加单词再开始复习。', 'info')
+      return
+    }
+    const ids = words.map((word) => word.id)
+    for (let index = ids.length - 1; index > 0; index -= 1) {
+      const target = Math.floor(Math.random() * (index + 1))
+      ;[ids[index], ids[target]] = [ids[target], ids[index]]
+    }
+    setSessionIds(ids)
+    setReviewedIds([])
+    setRevealed(false)
+    setTab('review')
+    toast(`已随机生成 ${ids.length} 个单词的复习序列。`, 'success')
+  }
 
   const handleAdd = () => {
     const result = addWord(form)
@@ -80,16 +105,27 @@ export default function WordbookPage() {
     <div className="space-y-6">
       <PageHero
         eyebrow="VOCABULARY DESK"
-        title="单词本与复习"
+        title="我的单词本"
         actions={
-          <button
-            type="button"
-            onClick={() => setTab('add')}
-            className="inline-flex items-center gap-2 rounded-lg bg-white px-4 py-2.5 text-sm font-semibold text-slate-900 transition-colors hover:bg-slate-100"
-          >
-            <Plus className="h-4 w-4" />
-            添加单词
-          </button>
+          <>
+            <button
+              type="button"
+              onClick={startFreeReview}
+              disabled={words.length === 0}
+              className="inline-flex items-center gap-2 rounded-lg bg-white px-4 py-2.5 text-sm font-semibold text-slate-900 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:bg-white/20 disabled:text-white/50"
+            >
+              <Play className="h-4 w-4" />
+              开始复习
+            </button>
+            <button
+              type="button"
+              onClick={() => setTab('add')}
+              className="inline-flex items-center gap-2 rounded-lg border border-white/15 bg-white/5 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-white/10"
+            >
+              <Plus className="h-4 w-4" />
+              添加单词
+            </button>
+          </>
         }
       />
 
@@ -282,7 +318,7 @@ export default function WordbookPage() {
                 <div className="mb-3 flex items-center justify-between">
                   <div>
                     <p className="text-sm font-semibold text-slate-900">
-                      今日复习
+                      {sessionIds ? '随机复习 · 全部单词' : '今日复习'}
                     </p>
                   </div>
                   <span className="text-[11px] font-medium text-slate-500 tabular-nums">
@@ -365,12 +401,19 @@ export default function WordbookPage() {
               <EmptyState
                 icon={CheckCircle2}
                 title={
-                  reviewedCount > 0 ? '今日复习完成' : '今天没有待复习单词'
+                  sessionIds
+                    ? '本轮随机复习完成'
+                    : reviewedCount > 0
+                      ? '今日复习完成'
+                      : '今天没有待复习单词'
                 }
                 action={
                   <button
                     type="button"
-                    onClick={() => setTab('all')}
+                    onClick={() => {
+                      setSessionIds(null)
+                      setTab('all')
+                    }}
                     className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-4 py-2.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
                   >
                     查看全部单词

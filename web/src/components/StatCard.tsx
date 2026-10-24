@@ -1,4 +1,5 @@
 import type { LucideIcon } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { toneStyles, type Tone } from './Tag'
 
 interface StatCardProps {
@@ -7,6 +8,7 @@ interface StatCardProps {
   hint?: string
   icon?: LucideIcon
   accent?: Tone
+  to?: string
 }
 
 export function StatCard({
@@ -15,10 +17,11 @@ export function StatCard({
   hint,
   icon: Icon,
   accent = 'blue',
+  to,
 }: StatCardProps) {
   const styles = toneStyles[accent]
-  return (
-    <div className="relative overflow-hidden rounded-xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-900/[0.02]">
+  const body = (
+    <>
       <span className={`absolute inset-x-0 top-0 h-1 ${styles.bar}`} />
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
@@ -38,6 +41,22 @@ export function StatCard({
       {hint ? (
         <p className="mt-3 text-[11px] leading-relaxed text-slate-400">{hint}</p>
       ) : null}
-    </div>
+    </>
   )
+
+  const base =
+    'relative overflow-hidden rounded-xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-900/[0.02]'
+
+  if (to) {
+    return (
+      <Link
+        to={to}
+        className={`${base} block transition-all hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md hover:shadow-slate-900/[0.06] focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400`}
+      >
+        {body}
+      </Link>
+    )
+  }
+
+  return <div className={base}>{body}</div>
 }

@@ -29,6 +29,19 @@ export interface VocabEntry {
   source: string
 }
 
+export interface VocabRow {
+  word: string
+  basic_meaning: string
+  rare_meaning: string | null
+  level: string
+  exam_frequency: number
+}
+
+export interface VocabListResponse {
+  items: VocabRow[]
+  total: number
+}
+
 export interface SentenceWorkflow {
   sentence: {
     id: string
@@ -267,6 +280,21 @@ export const api = {
   getKnowledge: () => request<KnowledgeResponse>('/knowledge'),
   getQuestionsFull: () => request<{ items: FullQuestion[] }>('/questions/full'),
   getPassages: () => request<{ items: PassageSummary[] }>('/passages'),
+  browseVocab: (params: {
+    q?: string
+    level?: string
+    sort?: 'freq' | 'alpha'
+    offset?: number
+    limit?: number
+  }) => {
+    const search = new URLSearchParams()
+    if (params.q) search.set('q', params.q)
+    if (params.level) search.set('level', params.level)
+    if (params.sort) search.set('sort', params.sort)
+    search.set('offset', String(params.offset ?? 0))
+    search.set('limit', String(params.limit ?? 50))
+    return request<VocabListResponse>(`/vocab?${search.toString()}`)
+  },
   getPassageSentences: (passageId: string) =>
     request<{ passage: Omit<PassageSummary, 'char_count' | 'preview' | 'sentence_count' | 'question_count' | 'imported'>; items: PassageSentence[] }>(
       `/passages/${encodeURIComponent(passageId)}/sentences`,

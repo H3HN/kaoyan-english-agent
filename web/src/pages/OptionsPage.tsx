@@ -109,6 +109,26 @@ export default function OptionsPage() {
       .getQuestionsFull()
       .then((response) => {
         setAllQuestions(response.items)
+        const paramYear = Number(searchParams.get('year') ?? 0)
+        const paramText = Number(searchParams.get('text') ?? 0)
+        const paramExam = searchParams.get('exam') ?? ''
+        const linked = paramYear && paramText
+          ? response.items.find(
+              (item) =>
+                item.year === paramYear &&
+                item.textNumber === paramText &&
+                (!paramExam || item.examType === paramExam),
+            )
+          : undefined
+        if (linked) {
+          setSelection({
+            year: linked.year,
+            examType: linked.examType,
+            textNumber: linked.textNumber,
+          })
+          setActiveQuestionId(linked.id)
+          return
+        }
         const imported = response.items
           .filter((item) => item.id.startsWith('auto_'))
           .sort(

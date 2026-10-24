@@ -10,7 +10,6 @@ import {
   Target,
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { ComparePanel } from '../components/ComparePanel'
 import { FeatureCard } from '../components/FeatureCard'
 import { PageHero } from '../components/PageHero'
 import { SectionHeader } from '../components/SectionHeader'
@@ -31,7 +30,7 @@ const features = [
   },
   {
     to: '/options',
-    title: '选项陷阱分析',
+    title: '阅读真题训练（选项陷阱分析）',
     description:
       '左栏题干与定位句，右栏 A / B / C / D 逐项标注陷阱类型，最后回到解题路径。',
     icon: Target,
@@ -47,7 +46,7 @@ const features = [
   },
   {
     to: '/wordbook',
-    title: '单词本与复习',
+    title: '我的单词本',
     description:
       '阅读中沉淀生词，按艾宾浩斯间隔安排复习，掌握度与下次复习时间一目了然。',
     icon: BookMarked,
@@ -113,32 +112,36 @@ export default function DashboardPage() {
           value={meta ? meta.passage_count : '—'}
           hint={
             meta
-              ? `${meta.question_count} 道题目 · ${meta.sentence_count} 个句子`
+              ? `${meta.question_count} 道题目 · ${meta.sentence_count} 个句子 · 点击浏览`
               : '等待后端数据'
           }
           icon={BookOpenCheck}
           accent="blue"
+          to="/library?tab=exams"
         />
         <StatCard
           label="大纲词汇"
           value={meta ? meta.vocab_count.toLocaleString('zh-CN') : '—'}
-          hint={meta ? 'SQLite 考研词库 · 去重后' : '等待后端数据'}
+          hint={meta ? 'SQLite 考研词库 · 去重后 · 点击浏览' : '等待后端数据'}
           icon={LibraryBig}
           accent="cyan"
+          to="/library?tab=vocab"
         />
         <StatCard
-          label="单词本"
+          label="我的单词本"
           value={words.length}
-          hint={`平均掌握度 ${Math.round(averageFamiliarity * 100)}%`}
+          hint={`平均掌握度 ${Math.round(averageFamiliarity * 100)}% · 点击复习`}
           icon={BookMarked}
           accent="amber"
+          to="/wordbook"
         />
         <StatCard
           label="已练习"
           value={records.length}
-          hint={connected ? 'practice_records 实时同步' : '答题记录自动沉淀'}
+          hint={connected ? 'practice_records 实时同步 · 点击看报告' : '答题记录自动沉淀'}
           icon={Target}
           accent="violet"
+          to="/report"
         />
       </div>
 
@@ -192,46 +195,7 @@ export default function DashboardPage() {
         </div>
       </section>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          <SectionHeader
-            title="定制效果预览"
-            action={
-              <Link
-                to="/comparison"
-                className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 transition-colors hover:text-slate-800"
-              >
-                完整对比
-                <ChevronRight className="h-3.5 w-3.5" />
-              </Link>
-            }
-          />
-          <ComparePanel
-            className="h-full"
-            left={
-              <ul className="space-y-2.5">
-                <li>直接翻译整句，翻完即结束</li>
-                <li>选项只给“选 B”，不解释为什么</li>
-                <li>生词不记录，也不安排复习</li>
-              </ul>
-            }
-            right={
-              <ul className="space-y-2.5">
-                {[
-                  '五步法拆主干、从句与修饰',
-                  '标注陷阱类型并给出解题步骤',
-                  '生词提取 → 单词本 → 复习闭环',
-                ].map((item) => (
-                  <li key={item} className="flex items-start gap-2">
-                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" />
-                    <span>{item}</span>
-                  </li>
-                ))}
-              </ul>
-            }
-          />
-        </div>
-
+      <div className="grid gap-6">
         <div>
           <SectionHeader
             title="今日学习任务"

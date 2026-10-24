@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
+import type { LucideIcon } from 'lucide-react'
 import {
   BarChart3,
   BookMarked,
   BookOpenCheck,
-  GitCompareArrows,
+  Layers,
   LayoutDashboard,
   LibraryBig,
   Menu,
@@ -16,14 +17,24 @@ import {
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import { useAppStore } from '../store/AppStore'
 
-const navItems = [
-  { to: '/', label: '首页', icon: LayoutDashboard, end: true },
-  { to: '/sentence', label: '长难句拆解', icon: ScanText },
-  { to: '/options', label: '阅读真题训练', icon: Target },
-  { to: '/chat', label: 'AI 对话', icon: MessageSquareText },
-  { to: '/wordbook', label: '单词本与复习', icon: BookMarked },
+type NavTone = 'home' | 'feature' | 'default'
+
+type NavItem = {
+  to: string
+  label: string
+  icon: LucideIcon
+  end?: boolean
+  tone?: NavTone
+}
+
+const navItems: NavItem[] = [
+  { to: '/', label: '首页', icon: LayoutDashboard, end: true, tone: 'home' },
+  { to: '/sentence', label: '长难句拆解', icon: ScanText, tone: 'feature' },
+  { to: '/options', label: '阅读真题训练', icon: Target, tone: 'feature' },
+  { to: '/chat', label: 'AI 对话', icon: MessageSquareText, tone: 'feature' },
+  { to: '/wordbook', label: '我的单词本', icon: BookMarked, tone: 'feature' },
+  { to: '/library', label: '资料库', icon: Layers },
   { to: '/report', label: '学习报告', icon: BarChart3 },
-  { to: '/comparison', label: '定制对比', icon: GitCompareArrows },
   { to: '/knowledge', label: '领域知识库', icon: LibraryBig },
 ]
 
@@ -31,10 +42,10 @@ const pageTitles: Record<string, string> = {
   '/': '研英智学 · 考研英语 Agent',
   '/sentence': '长难句拆解 · 研英智学',
   '/options': '阅读真题训练 · 研英智学',
+  '/library': '资料库 · 研英智学',
   '/chat': 'AI 对话 · 研英智学',
-  '/wordbook': '单词本与复习 · 研英智学',
+  '/wordbook': '我的单词本 · 研英智学',
   '/report': '学习报告 · 研英智学',
-  '/comparison': '定制效果对比 · 研英智学',
   '/knowledge': '领域知识库 · 研英智学',
 }
 
@@ -105,34 +116,68 @@ function SidebarContent({
         <p className="px-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
           学习工作台
         </p>
-        <nav className="mt-2 space-y-0.5" aria-label="主导航">
-          {navItems.map(({ to, label, icon: Icon, end }) => (
+        <nav className="mt-2 space-y-1.5" aria-label="主导航">
+          {navItems.map(({ to, label, icon: Icon, end, tone }) => (
             <NavLink
               key={to}
               to={to}
               end={end}
               onClick={onNavigate}
-              className={({ isActive }) =>
-                `group flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] transition-colors ${
+              className={({ isActive }) => {
+                const base =
+                  'group flex items-center gap-3 rounded-lg transition-colors'
+                if (tone === 'home') {
+                  return `${base} px-3.5 py-3.5 text-[15px] font-bold shadow-sm ${
+                    isActive
+                      ? 'bg-slate-900 text-white'
+                      : 'border border-slate-200 bg-white text-slate-900 hover:border-slate-300 hover:bg-slate-50'
+                  }`
+                }
+                if (tone === 'feature') {
+                  return `${base} border px-3 py-2.5 text-[13px] font-semibold shadow-sm ${
+                    isActive
+                      ? 'border-amber-600 bg-amber-600 text-white'
+                      : 'border-slate-200 bg-white text-amber-600 hover:bg-amber-50/70 hover:text-amber-700'
+                  }`
+                }
+                return `${base} border border-slate-200 px-3 py-2.5 text-[13px] shadow-sm ${
                   isActive
                     ? 'bg-slate-100 font-semibold text-slate-900'
-                    : 'font-medium text-slate-500 hover:bg-slate-50 hover:text-slate-800'
+                    : 'bg-white font-medium text-slate-500 hover:bg-slate-50 hover:text-slate-800'
                 }`
-              }
+              }}
             >
               {({ isActive }) => (
                 <>
                   <Icon
-                    className={`h-[18px] w-[18px] shrink-0 ${
-                      isActive
-                        ? 'text-slate-800'
-                        : 'text-slate-400 group-hover:text-slate-600'
+                    className={`shrink-0 ${
+                      tone === 'home' ? 'h-5 w-5' : 'h-[18px] w-[18px]'
+                    } ${
+                      tone === 'home'
+                        ? isActive
+                          ? 'text-white'
+                          : 'text-slate-700'
+                        : tone === 'feature'
+                          ? isActive
+                            ? 'text-white'
+                            : 'text-amber-600'
+                          : isActive
+                            ? 'text-slate-800'
+                            : 'text-slate-400 group-hover:text-slate-600'
                     }`}
-                    strokeWidth={1.8}
+                    strokeWidth={tone === 'home' ? 2 : 1.8}
                   />
                   <span className="min-w-0 flex-1 truncate">{label}</span>
                   {isActive ? (
-                    <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-slate-800" />
+                    <span
+                      className={`h-1.5 w-1.5 shrink-0 rounded-full ${
+                        tone === 'home'
+                          ? 'bg-white'
+                          : tone === 'feature'
+                            ? 'bg-white'
+                            : 'bg-slate-800'
+                      }`}
+                    />
                   ) : null}
                 </>
               )}

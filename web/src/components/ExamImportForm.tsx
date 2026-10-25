@@ -29,6 +29,7 @@ export function ExamImportForm({
     examType: '英语一',
     textNumber: '1',
     answerKey: '',
+    answerSourceNote: '',
   })
   const [form, setForm] = useState({
     year: String(new Date().getFullYear()),
@@ -54,6 +55,11 @@ export function ExamImportForm({
       toast('请填写 PDF 的 http(s) 地址。', 'error')
       return
     }
+    const textNumber = Number(autoForm.textNumber)
+    if (!Number.isInteger(textNumber) || textNumber < 1 || textNumber > 4) {
+      toast('自动导入支持 Part A 的 Text 1—4，每篇五题。', 'error')
+      return
+    }
     setLoading(true)
     try {
       const response = await api.autoImportExam({
@@ -62,18 +68,19 @@ export function ExamImportForm({
         exam_type: autoForm.examType,
         text_number: Number(autoForm.textNumber),
         answer_key: autoForm.answerKey.trim(),
+        answer_source_note: autoForm.answerSourceNote.trim(),
       })
       const count = response.questions.length
       toast(
         response.answer_source === 'inferred'
           ? `已导入 ${count} 题；答案为 AI 推断，请核对。`
-          : `已导入 ${count} 题。`,
+          : `已导入 ${count} 题；提供的答案尚待复核。`,
         response.answer_source === 'inferred' ? 'info' : 'success',
       )
       onBatchImported(response.questions)
       onClose()
-    } catch {
-      toast('自动解析失败，请检查 PDF 地址或稍后重试。', 'error')
+    } catch (error) {
+      toast(error instanceof Error ? error.message : '自动解析失败，请检查 PDF 地址或稍后重试。', 'error')
     } finally {
       setLoading(false)
     }
@@ -114,8 +121,8 @@ export function ExamImportForm({
       )
       onImported(response.question)
       onClose()
-    } catch {
-      toast('导入失败，请检查后端服务和文章格式。', 'error')
+    } catch (error) {
+      toast(error instanceof Error ? error.message : '导入失败，请检查后端服务和文章格式。', 'error')
     } finally {
       setLoading(false)
     }
@@ -212,6 +219,9 @@ export function ExamImportForm({
             <label className={labelClass}>
               Text
               <input
+                type="number"
+                min={1}
+                max={4}
                 value={autoForm.textNumber}
                 onChange={(event) =>
                   setAutoForm((prev) => ({
@@ -224,7 +234,7 @@ export function ExamImportForm({
               />
             </label>
             <label className={labelClass}>
-              答案序列
+              答案序列（恰好五个 A/B/C/D）
               <input
                 value={autoForm.answerKey}
                 onChange={(event) =>
@@ -234,6 +244,15 @@ export function ExamImportForm({
                   }))
                 }
                 placeholder="如 21-25 BCDAB（可选）"
+                className={fieldClass}
+              />
+            </label>
+            <label className={`${labelClass} sm:col-span-3`}>
+              答案来源说明（可选，如教材名称与页码；填写不等于已复核）
+              <input
+                value={autoForm.answerSourceNote}
+                onChange={(event) => setAutoForm((prev) => ({ ...prev, answerSourceNote: event.target.value }))}
+                maxLength={500}
                 className={fieldClass}
               />
             </label>

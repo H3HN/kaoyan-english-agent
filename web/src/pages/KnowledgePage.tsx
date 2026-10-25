@@ -219,7 +219,7 @@ export default function KnowledgePage() {
         </div>
         <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-3 text-[10px] text-slate-400">
           <span>当前显示 {currentCount} 条知识条目</span>
-          <span>SQLite 知识库 · 可继续导入全量真题</span>
+          <span>知识库 · 辅助阅读与真题训练</span>
         </div>
       </div>
 

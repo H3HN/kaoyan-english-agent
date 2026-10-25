@@ -205,6 +205,7 @@ D. {options.get('D', '')}
 {{
   "question_type": "细节题/主旨题/推理题/词义题/态度题 之一",
   "location": "原文定位句或段落",
+  "source_quote": "逐字摘录能支持答案的原文，不能确定时留空",
   "analysis": {{
     "A": {{"trapType": "正确或陷阱类型", "explanation": "中文解释"}},
     "B": {{"trapType": "正确或陷阱类型", "explanation": "中文解释"}},
@@ -290,6 +291,7 @@ D. {options.get('D', '')}
         return {
             "question_type": question_type,
             "location": str(parsed.get("location", "自定义导入")).strip()[:200],
+            "source_quote": parsed.get("source_quote") if isinstance(parsed.get("source_quote"), str) else "",
             "analysis": analysis,
             "steps": steps,
         }
@@ -322,7 +324,7 @@ Text：{text_number}
   "passage": "完整英文文章，不要包含题干和选项",
   "questions": [
     {{
-      "number": 1,
+      "number": 21,
       "question_type": "细节题/主旨题/推理题/词义题/态度题",
       "content": "题干",
       "options": {{"A": "...", "B": "...", "C": "...", "D": "..."}},
@@ -335,13 +337,15 @@ Text：{text_number}
 }}
 
 要求：
-1. questions 按原文顺序，通常 5 题。
-2. 如果提供了答案序列，必须使用答案序列；否则根据文章推断，并把 answer_source 设为 inferred。
-3. 不要编造原文没有的题目或选项；无法确定的字段留空。
-4. 只输出 JSON，不输出解释。
+1. questions 必须保留原卷题号，不得按列表顺序重编号。当前 Text 的题号应为 {21 + (text_number - 1) * 5}—{25 + (text_number - 1) * 5}，共五题；不能确定原题号时留空。
+2. 如果提供了答案序列，按原题号对应；否则根据文章推断，并把 answer_source 设为 inferred。
+3. 不要编造原文没有的题目或选项；无法确定的字段留空，不要丢弃不完整题目。
+4. passage 必须保留原文段落，段落之间用两个换行符（JSON 中写 \\n\\n），不要自行合并或虚构段落。
+5. source_quote 必须逐字摘录原文；无法确定证据时留空，主旨题可以留空待人工复核。
+6. 只输出 JSON，不输出解释。
 
 原文：
-{raw_text[:16000]}
+{raw_text}
 """
     try:
         from openai import OpenAI
@@ -366,48 +370,14 @@ Text：{text_number}
         if not parsed:
             return None
 
-        passage = str(parsed.get("passage", "")).strip()
-        raw_questions = parsed.get("questions")
-        if len(passage) < 100 or not isinstance(raw_questions, list):
-            return None
-
-        questions: list[dict[str, Any]] = []
-        for index, raw in enumerate(raw_questions[:8], start=1):
-            if not isinstance(raw, dict):
-                continue
-            content = str(raw.get("content", "")).strip()
-            raw_options = raw.get("options")
-            if not content or not isinstance(raw_options, dict):
-                continue
-            options = {
-                key: str(raw_options.get(key, "")).strip()
-                for key in ("A", "B", "C", "D")
-            }
-            if not all(options.values()):
-                continue
-            correct = str(raw.get("correct_answer", "")).strip().upper()[:1]
-            if correct not in {"A", "B", "C", "D"}:
-                continue
-            qtype = str(raw.get("question_type", "细节题")).strip()
-            if qtype not in VALID_QUESTION_TYPES:
-                qtype = "细节题"
-            questions.append(
-                {
-                    "number": index,
-                    "question_type": qtype,
-                    "content": content[:1500],
-                    "options": options,
-                    "correct_answer": correct,
-                    "location": str(raw.get("location", "")).strip()[:200],
-                    "source_quote": str(raw.get("source_quote", "")).strip()[:600],
-                }
-            )
-        if not questions:
+        # Keep the raw question numbers and incomplete rows. The deterministic
+        # import validator reports every defect instead of silently dropping and
+        # renumbering questions (which used to shift the supplied answer key).
+        if not isinstance(parsed, dict):
             return None
         return {
-            "passage": passage[:20000],
-            "questions": questions,
-            "answer_source": str(parsed.get("answer_source", "inferred")),
+            "passage": parsed.get("passage"),
+            "questions": parsed.get("questions"),
         }
     except Exception as exc:  # noqa: BLE001
         logger.warning("LLM exam extraction failed: %s", exc)
@@ -443,7 +413,7 @@ def analyze_imported_questions_batch(
 {{
   "questions": [
     {{
-      "number": 1,
+      "number": 21,
       "question_type": "细节题/主旨题/推理题/词义题/态度题",
       "analysis": {{
         "A": {{"trapType": "正确或陷阱类型", "explanation": "中文解释"}},

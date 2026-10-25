@@ -14,6 +14,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from db import connect, init_db
+from exam_import import (
+    ImportValidationError, LETTERS, QUESTION_TYPES, expected_numbers,
+    locate_quote, normalize_passage, parse_answer_key, split_passage, validate_extraction,
+)
 from llm import (
     analyze_imported_question,
     analyze_imported_questions_batch,
@@ -76,6 +80,11 @@ def get_db():
 DB = Annotated[sqlite3.Connection, Depends(get_db)]
 
 
+def _team_cli_only():
+    raise HTTPException(status_code=410, detail="题库管理已迁移到团队离线命令行 scripts/question_bank.py，学生接口不接受导入或管理操作")
+
+
+
 class ChatRequest(BaseModel):
     message: str = Field(min_length=1, max_length=4000)
     context_id: str = Field(default="", max_length=80)
@@ -119,8 +128,9 @@ class AutoImportRequest(BaseModel):
     text: str | None = Field(default=None, max_length=50000)
     year: int = Field(ge=2000, le=2100)
     exam_type: str = Field(pattern=r"^英语[一二]$")
-    text_number: int = Field(default=1, ge=1, le=10)
+    text_number: int = Field(default=1, ge=1, le=4)
     answer_key: str = Field(default="", max_length=200)
+    answer_source_note: str = Field(default="", max_length=500)
 
 
 class ExamImportRequest(BaseModel):
@@ -175,6 +185,7 @@ def passages(conn: DB):
                (SELECT COUNT(*) FROM exam_sentences s WHERE s.passage_id = p.id) AS sentence_count,
                (SELECT COUNT(*) FROM exam_questions q WHERE q.passage_id = p.id) AS question_count
         FROM exam_passages p
+        WHERE p.publication_status = 'published'
         ORDER BY p.year DESC, p.text_number, p.id
         """
     ).fetchall()
@@ -210,7 +221,7 @@ def passages(conn: DB):
 @app.get("/api/passages/{passage_id}/sentences")
 def passage_sentences(passage_id: str, conn: DB):
     passage = conn.execute(
-        "SELECT id, year, exam_type, text_number, text FROM exam_passages WHERE id = ?",
+        "SELECT id, year, exam_type, text_number, text FROM exam_passages WHERE id = ? AND publication_status = 'published'",
         (passage_id,),
     ).fetchone()
     if not passage:
@@ -219,7 +230,7 @@ def passage_sentences(passage_id: str, conn: DB):
         """
         SELECT id, sentence_index, paragraph, text, source_label
         FROM exam_sentences WHERE passage_id = ?
-        ORDER BY sentence_index
+        ORDER BY paragraph, sentence_index
         """,
         (passage_id,),
     ).fetchall()
@@ -251,7 +262,7 @@ def passage_sentences(passage_id: str, conn: DB):
 @app.get("/api/sentences/{sentence_id}/breakdown")
 def sentence_breakdown(sentence_id: str, conn: DB):
     row = conn.execute(
-        "SELECT * FROM exam_sentences WHERE id = ?", (sentence_id,)
+        "SELECT s.* FROM exam_sentences s JOIN exam_passages p ON p.id=s.passage_id WHERE s.id = ? AND p.publication_status='published'", (sentence_id,)
     ).fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="sentence not found")
@@ -374,37 +385,13 @@ def review_vocab(payload: ReviewRequest, conn: DB):
 @app.post("/api/records")
 def create_record(payload: RecordRequest, conn: DB):
     question = get_question(conn, payload.question_id)
-    is_correct = payload.user_answer == payload.correct_answer
-    if question:
-        record, _ = record_option_attempt(conn, question, payload.user_answer)
-        return {"ok": True, "record": record}
-    cursor = conn.execute(
-        """
-        INSERT INTO practice_records
-            (question_id, question_type, user_answer, correct_answer, is_correct)
-        VALUES (?, ?, ?, ?, ?)
-        """,
-        (
-            payload.question_id,
-            payload.question_type,
-            payload.user_answer,
-            payload.correct_answer,
-            1 if is_correct else 0,
-        ),
-    )
-    conn.commit()
-    return {
-        "ok": True,
-        "record": {
-            "id": f"r{cursor.lastrowid}",
-            "questionId": payload.question_id,
-            "questionType": payload.question_type,
-            "userAnswer": payload.user_answer,
-            "correctAnswer": payload.correct_answer,
-            "isCorrect": is_correct,
-            "time": datetime.now().isoformat(timespec="seconds"),
-        },
-    }
+    if not question:
+        raise HTTPException(status_code=404, detail="published question not found")
+    if payload.user_answer not in LETTERS:
+        raise HTTPException(status_code=422, detail="answer must be A/B/C/D")
+    record, _ = record_option_attempt(conn, question, payload.user_answer)
+    return {"ok": True, "record": record}
+
 
 
 @app.get("/api/report")
@@ -412,12 +399,12 @@ def report(conn: DB):
     return get_report(conn)
 
 
-def _full_question(conn: sqlite3.Connection, question_id: str):
-    question = get_question(conn, question_id)
+def _full_question(conn: sqlite3.Connection, question_id: str, *, include_drafts=True):
+    question = get_question(conn, question_id, include_drafts=include_drafts)
     if not question:
         return None
     source = (
-        get_sentence(conn, question["source_sentence_id"])
+        get_sentence(conn, question["source_sentence_id"], include_drafts=include_drafts)
         if question.get("source_sentence_id")
         else None
     )
@@ -434,8 +421,14 @@ def _full_question(conn: sqlite3.Connection, question_id: str):
         "correctAnswer": question["correct_answer"],
         "analysis": question["analysis"],
         "steps": question["steps"],
-        "location": source["source"] if source else "自定义导入",
-        "sourceSentence": source["text"] if source else "",
+        "location": source["source"] if source and question["location_status"] == "exact_quote" else "待人工定位",
+        "sourceSentence": source["text"] if source and question["location_status"] == "exact_quote" else "",
+        "sourceSentenceId": question["source_sentence_id"] if question["location_status"] == "exact_quote" else None,
+        "answerSource": question["answer_source"],
+        "answerSourceNote": question["answer_source_note"],
+        "reviewStatus": question["review_status"],
+        "locationStatus": question["location_status"],
+        "sourceQuote": question["source_quote"],
         "sourceHighlights": [],
         "passage": passage_row["text"] if passage_row else "",
         "passageId": question["passage_id"],
@@ -448,143 +441,143 @@ def _full_question(conn: sqlite3.Connection, question_id: str):
 @app.get("/api/questions/full")
 def questions_full(conn: DB):
     rows = conn.execute(
-        "SELECT id FROM exam_questions ORDER BY year DESC, passage_id, number"
+        "SELECT q.id FROM exam_questions q JOIN exam_passages p ON p.id=q.passage_id WHERE p.publication_status='published' ORDER BY q.year DESC, q.passage_id, q.number"
     ).fetchall()
     items = [
         item
-        for item in (_full_question(conn, row["id"]) for row in rows)
+        for item in (_full_question(conn, row["id"], include_drafts=False) for row in rows)
         if item is not None
     ]
     return {"items": items}
 
 
-@app.post("/api/exams/import")
-def import_exam(payload: ExamImportRequest, conn: DB):
-    options = {
-        key: str(payload.options.get(key, "")).strip()
-        for key in ("A", "B", "C", "D")
-    }
-    if not all(options.values()):
-        raise HTTPException(
-            status_code=400, detail="A/B/C/D four options are required"
-        )
-    if payload.correct_answer not in options:
-        raise HTTPException(status_code=400, detail="invalid correct answer")
+def _validation_error(exc: ImportValidationError) -> HTTPException:
+    return HTTPException(status_code=422, detail={
+        "code": "invalid_exam", "message": "真题校验失败，未入库", "issues": exc.issues,
+    })
 
-    passage_id = f"custom_{uuid.uuid4().hex[:8]}"
-    conn.execute(
-        "INSERT INTO exam_passages (id, year, exam_type, text_number, text) VALUES (?, ?, ?, ?, ?)",
-        (
-            passage_id,
-            payload.year,
-            payload.exam_type,
-            payload.text_number,
-            payload.passage.strip(),
-        ),
-    )
 
-    chunks = [
-        item.strip()
-        for item in re.split(r"(?<=[.!?])\s+", payload.passage.strip())
-        if item.strip()
-    ]
-    sentences = []
-    for index, text in enumerate(chunks, start=1):
-        sentence_id = f"{passage_id}_s{index}"
-        source_label = (
-            f"自定义导入 · {payload.year} {payload.exam_type} "
-            f"Text {payload.text_number} · 第1段第{index}句"
+def _insert_sentences(conn, passage_id, payload, passage_text, prefix):
+    rows = split_passage(passage_text)
+    for global_index, row in enumerate(rows, 1):
+        row["id"] = f"{passage_id}_s{global_index}"
+        row["source"] = (
+            f"{prefix} · {payload.year} {payload.exam_type} Text {payload.text_number} · "
+            f"第{row['paragraph']}段第{row['sentence_index']}句"
         )
         conn.execute(
-            """
-            INSERT INTO exam_sentences
-                (id, passage_id, year, exam_type, text_number, paragraph,
-                 sentence_index, text, grammar_tags, source_label)
-            VALUES (?, ?, ?, ?, ?, 1, ?, ?, '[]', ?)
-            """,
-            (
-                sentence_id,
-                passage_id,
-                payload.year,
-                payload.exam_type,
-                payload.text_number,
-                index,
-                text,
-                source_label,
-            ),
+            "INSERT INTO exam_sentences "
+            "(id, passage_id, year, exam_type, text_number, paragraph, sentence_index, "
+            "text, grammar_tags, source_label, char_start, char_end) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, '[]', ?, ?, ?)",
+            (row["id"], passage_id, payload.year, payload.exam_type, payload.text_number,
+             row["paragraph"], row["sentence_index"], row["text"], row["source"],
+             row["char_start"], row["char_end"]),
         )
-        sentences.append(
-            {"id": sentence_id, "text": text, "source": source_label}
-        )
+    return rows
 
-    source = max(sentences, key=lambda item: len(item["text"])) if sentences else None
-    analysis_result = analyze_imported_question(
-        payload.passage, payload.content, options, payload.correct_answer
-    )
-    if analysis_result:
-        question_type = analysis_result["question_type"]
-        analysis = analysis_result["analysis"]
-        steps = analysis_result["steps"]
-        analysis_source = "deepseek"
-    else:
-        question_type = (
-            payload.question_type
-            if payload.question_type
-            in {"细节题", "主旨题", "推理题", "词义题", "态度题"}
-            else "细节题"
-        )
-        analysis = {
-            key: {
-                "trapType": "正确" if key == payload.correct_answer else "待分析",
-                "explanation": (
-                    "与原文信息一致，为正确选项。"
-                    if key == payload.correct_answer
-                    else "导入题目尚未生成该选项分析。"
-                ),
-            }
-            for key in ("A", "B", "C", "D")
-        }
-        steps = [
-            "识别题型与题干关键词。",
-            "回到原文定位对应句。",
-            "逐项比对，标注陷阱类型。",
-            "排除干扰项，确认正确答案。",
-        ]
-        analysis_source = "fallback"
 
-    question_id = f"{passage_id}_q1"
+def _analysis_fields(question, analyzed=None):
+    analyzed = analyzed or {}
+    raw = analyzed.get("analysis") or {}
+    analysis = {}
+    for key in LETTERS:
+        item = raw.get(key) if isinstance(raw.get(key), dict) else {}
+        trap = item.get("trapType", "待分析")
+        explanation = item.get("explanation", "")
+        if key == question["correct_answer"]:
+            if trap and trap != "正确":
+                explanation = "模型分析与当前答案冲突，请复核。"
+            trap = "正确"
+            explanation = explanation or "按当前导入答案标记，尚未人工复核。"
+        elif trap == "正确":
+            trap = "待分析"
+            explanation = "模型分析与当前答案冲突，请复核。"
+        analysis[key] = {"trapType": trap or "待分析",
+                         "explanation": explanation or "尚未生成该选项分析。"}
+    qtype = analyzed.get("question_type") or question.get("question_type", "细节题")
+    if qtype not in QUESTION_TYPES:
+        qtype = "细节题"
+    steps = analyzed.get("steps") or [
+        "识别题型与题干关键词。", "回到原文核对证据，无法定位时人工复核。",
+        "逐项比对，标注陷阱类型。", "依据可靠答案核对结论。",
+    ]
+    return qtype, analysis, steps
+
+
+def _insert_question(conn, passage_id, payload, question, analyzed, sentence_rows,
+                     passage_text, answer_source, source_note):
+    qtype, analysis, steps = _analysis_fields(question, analyzed)
+    quote = question.get("source_quote", "")
+    location = locate_quote(quote, passage_text, sentence_rows)
+    question_id = f"{passage_id}_q{question['number']}"
     conn.execute(
-        """
-        INSERT INTO exam_questions
-            (id, passage_id, year, exam_type, text_number, number,
-             question_type, content, options_json, correct_answer,
-             analysis_json, steps_json, source_sentence_id)
-        VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?)
-        """,
-        (
-            question_id,
-            passage_id,
-            payload.year,
-            payload.exam_type,
-            payload.text_number,
-            question_type,
-            payload.content.strip(),
-            json.dumps(options, ensure_ascii=False),
-            payload.correct_answer,
-            json.dumps(analysis, ensure_ascii=False),
-            json.dumps(steps, ensure_ascii=False),
-            source["id"] if source else None,
-        ),
+        "INSERT INTO exam_questions "
+        "(id, passage_id, year, exam_type, text_number, number, question_type, content, "
+        "options_json, correct_answer, analysis_json, steps_json, source_sentence_id, "
+        "answer_source, answer_source_note, review_status, source_quote, location_status) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)",
+        (question_id, passage_id, payload.year, payload.exam_type, payload.text_number,
+         question["number"], qtype, question["content"],
+         json.dumps(question["options"], ensure_ascii=False), question["correct_answer"],
+         json.dumps(analysis, ensure_ascii=False), json.dumps(steps, ensure_ascii=False),
+         location["source_sentence_id"], answer_source, source_note, quote,
+         location["location_status"]),
     )
-    conn.commit()
+    return question_id
 
-    return {
-        "ok": True,
-        "question_id": question_id,
-        "passage_id": passage_id,
-        "analysis_source": analysis_source,
-        "question": _full_question(conn, question_id),
-    }
+
+def _manual_duplicate(conn, payload, passage_text):
+    # Separate manual questions can share a passage, but repeated submissions of
+    # the same question are rejected instead of creating indistinguishable copies.
+    return conn.execute(
+        "SELECT q.id FROM exam_questions q JOIN exam_passages p ON p.id=q.passage_id "
+        "WHERE p.year=? AND p.exam_type=? AND p.text_number=? AND p.text=? AND q.content=?",
+        (payload.year, payload.exam_type, payload.text_number, passage_text, payload.content.strip()),
+    ).fetchone()
+
+
+def _duplicate_error():
+    return HTTPException(status_code=409, detail={
+        "code": "duplicate_exam", "message": "该真题已导入，请先核对现有题库；本次未写入或覆盖。",
+    })
+
+
+@app.post("/api/exams/import", dependencies=[Depends(_team_cli_only)])
+def import_exam(payload: ExamImportRequest, conn: DB):
+    options = {key: payload.options.get(key, "").strip() for key in LETTERS}
+    if set(payload.options) != set(LETTERS) or not all(options.values()):
+        raise HTTPException(status_code=400, detail="A/B/C/D four options are required")
+    passage_text = normalize_passage(payload.passage)
+    if len(passage_text) < 50 or not payload.content.strip():
+        raise HTTPException(status_code=422, detail="文章或题干不能为空，文章须至少 50 字符")
+    if _manual_duplicate(conn, payload, passage_text):
+        raise _duplicate_error()
+    # No write transaction is held during network/LLM calls.
+    analyzed = analyze_imported_question(
+        passage_text, payload.content.strip(), options, payload.correct_answer,
+    )
+    question = {"number": 1, "content": payload.content.strip(), "options": options,
+                "correct_answer": payload.correct_answer, "question_type": payload.question_type,
+                "source_quote": (analyzed or {}).get("source_quote", "")}
+    passage_id = f"custom_{uuid.uuid4().hex}"
+    with conn:
+        conn.execute("BEGIN IMMEDIATE")
+        if _manual_duplicate(conn, payload, passage_text):
+            raise _duplicate_error()
+        conn.execute(
+            "INSERT INTO exam_passages (id, year, exam_type, text_number, text) VALUES (?, ?, ?, ?, ?)",
+            (passage_id, payload.year, payload.exam_type, payload.text_number, passage_text),
+        )
+        rows = _insert_sentences(conn, passage_id, payload, passage_text, "自定义导入")
+        question_id = _insert_question(
+            conn, passage_id, payload, question, analyzed, rows, passage_text,
+            "manual", "用户手工录入答案，尚未人工复核来源",
+        )
+    return {"ok": True, "question_id": question_id, "passage_id": passage_id,
+            "analysis_source": "deepseek" if analyzed else "fallback",
+            "answer_source": "manual", "review_status": "pending",
+            "question": _full_question(conn, question_id)}
 
 
 def _download_pdf_text(url: str) -> str:
@@ -620,189 +613,82 @@ def _slice_text(raw: str, text_number: int) -> str:
     return match.group(1) if match else raw
 
 
-def _best_sentence(text: str, sentences: list[dict[str, Any]]) -> dict[str, Any] | None:
-    tokens = set(re.findall(r"[a-z]{4,}", text.lower()))
-    if not sentences:
-        return None
-    return max(
-        sentences,
-        key=lambda item: len(
-            tokens & set(re.findall(r"[a-z]{4,}", item["text"].lower()))
-        ),
-    )
+def _auto_duplicate(conn, payload):
+    # Seed examples are placeholders and must not block a first real import.
+    return conn.execute(
+        "SELECT id FROM exam_passages WHERE year=? AND exam_type=? AND text_number=? "
+        "AND (id LIKE 'auto_%' OR id LIKE 'custom_%') LIMIT 1",
+        (payload.year, payload.exam_type, payload.text_number),
+    ).fetchone()
 
 
-@app.post("/api/exams/auto-import")
+@app.post("/api/exams/auto-import", dependencies=[Depends(_team_cli_only)])
 def auto_import_exam(payload: AutoImportRequest, conn: DB):
+    try:
+        numbers = expected_numbers(payload.text_number)
+        parse_answer_key(payload.answer_key, numbers)
+    except ImportValidationError as exc:
+        raise _validation_error(exc) from exc
+    if _auto_duplicate(conn, payload):
+        raise _duplicate_error()
     if not llm_status()["llm_configured"]:
-        raise HTTPException(
-            status_code=400,
-            detail="LLM_API_KEY is required for automatic PDF import",
-        )
-    if payload.text:
+        raise HTTPException(status_code=400, detail="LLM_API_KEY is required for automatic PDF import")
+    if payload.text and payload.text.strip():
         raw = payload.text
     elif payload.url:
         raw = _download_pdf_text(payload.url)
     else:
         raise HTTPException(status_code=400, detail="url or text is required")
-
     sliced = _slice_text(raw, payload.text_number)
+    if not sliced.strip():
+        raise HTTPException(status_code=422, detail="未提取到文本；扫描版 PDF 需要先做 OCR")
+    if len(sliced) > 50000:
+        raise HTTPException(status_code=422, detail="当前 Text 超过 50000 字符，请提供该篇文本，不能静默截断")
     extraction = extract_exam_text(
-        sliced,
-        payload.year,
-        payload.exam_type,
-        payload.text_number,
-        payload.answer_key,
+        sliced, payload.year, payload.exam_type, payload.text_number, payload.answer_key,
     )
-    if not extraction:
+    if extraction is None:
         raise HTTPException(status_code=422, detail="failed to extract reading text")
-
-    passage_text = extraction["passage"]
-    questions = extraction["questions"]
-    key_letters = re.findall(r"[ABCD]", payload.answer_key.upper())
-    answer_source = extraction.get("answer_source", "inferred")
-    if len(key_letters) >= len(questions):
-        for index, question in enumerate(questions):
-            question["correct_answer"] = key_letters[index]
-        answer_source = "provided"
-
-    passage_id = f"auto_{uuid.uuid4().hex[:8]}"
-    conn.execute(
-        "INSERT INTO exam_passages (id, year, exam_type, text_number, text) VALUES (?, ?, ?, ?, ?)",
-        (
-            passage_id,
-            payload.year,
-            payload.exam_type,
-            payload.text_number,
-            passage_text,
-        ),
-    )
-    chunks = [
-        item.strip()
-        for item in re.split(r"(?<=[.!?])\s+", passage_text)
-        if item.strip()
-    ]
-    sentence_rows = []
-    for index, text_value in enumerate(chunks, start=1):
-        sentence_id = f"{passage_id}_s{index}"
-        source_label = (
-            f"自动导入 · {payload.year} {payload.exam_type} "
-            f"Text {payload.text_number} · 第1段第{index}句"
-        )
-        conn.execute(
-            """
-            INSERT INTO exam_sentences
-                (id, passage_id, year, exam_type, text_number, paragraph,
-                 sentence_index, text, grammar_tags, source_label)
-            VALUES (?, ?, ?, ?, ?, 1, ?, ?, '[]', ?)
-            """,
-            (
-                sentence_id,
-                passage_id,
-                payload.year,
-                payload.exam_type,
-                payload.text_number,
-                index,
-                text_value,
-                source_label,
-            ),
-        )
-        sentence_rows.append(
-            {"id": sentence_id, "text": text_value, "source": source_label}
-        )
-
+    try:
+        validated = validate_extraction(extraction, payload.text_number, payload.answer_key)
+    except ImportValidationError as exc:
+        raise _validation_error(exc) from exc
+    passage_text = validated["passage"]
+    questions = validated["questions"]
+    answer_source = validated["answer_source"]
+    # Model analysis is prepared entirely before starting the atomic DB write.
     batch = analyze_imported_questions_batch(passage_text, questions)
-    analysis_source = "deepseek" if batch else "fallback"
+    passage_id = f"auto_{uuid.uuid4().hex}"
     question_ids = []
-    for index, question in enumerate(questions):
-        source_number = question["number"]
-        number = 21 + (payload.text_number - 1) * 5 + index
-        source = _best_sentence(
-            question.get("source_quote")
-            or f"{question['content']} {question['options'][question['correct_answer']]}",
-            sentence_rows,
-        )
-        analyzed = (batch or {}).get(source_number)
-        if analyzed:
-            analysis = analyzed["analysis"]
-            question_type = analyzed["question_type"]
-            steps = analyzed["steps"] or [
-                "识别题型与题干关键词。",
-                "回到原文定位对应句。",
-                "逐项比对，标注陷阱类型。",
-                "排除干扰项，确认正确答案。",
-            ]
-        else:
-            analysis = {
-                key: {
-                    "trapType": "正确" if key == question["correct_answer"] else "待分析",
-                    "explanation": (
-                        "与原文信息一致，为正确选项。"
-                        if key == question["correct_answer"]
-                        else "自动导入尚未生成该选项分析。"
-                    ),
-                }
-                for key in ("A", "B", "C", "D")
-            }
-            question_type = question["question_type"]
-            steps = [
-                "识别题型与题干关键词。",
-                "回到原文定位对应句。",
-                "逐项比对，标注陷阱类型。",
-                "排除干扰项，确认正确答案。",
-            ]
-        for key in ("A", "B", "C", "D"):
-            if key != question["correct_answer"] and analysis[key].get("trapType") == "正确":
-                analysis[key] = {
-                    "trapType": "待分析",
-                    "explanation": "自动分析结果与答案序列冲突，请复核。",
-                }
-        analysis[question["correct_answer"]] = {
-            "trapType": "正确",
-            "explanation": analysis[question["correct_answer"]].get(
-                "explanation", "与原文信息一致，为正确选项。"
-            ),
-        }
-        question_id = f"{passage_id}_q{number}"
+    with conn:
+        conn.execute("BEGIN IMMEDIATE")
+        # Recheck while holding the write lock: handles concurrent duplicate requests.
+        if _auto_duplicate(conn, payload):
+            raise _duplicate_error()
         conn.execute(
-            """
-            INSERT INTO exam_questions
-                (id, passage_id, year, exam_type, text_number, number,
-                 question_type, content, options_json, correct_answer,
-                 analysis_json, steps_json, source_sentence_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                question_id,
-                passage_id,
-                payload.year,
-                payload.exam_type,
-                payload.text_number,
-                number,
-                question_type,
-                question["content"],
-                json.dumps(question["options"], ensure_ascii=False),
-                question["correct_answer"],
-                json.dumps(analysis, ensure_ascii=False),
-                json.dumps(steps, ensure_ascii=False),
-                source["id"] if source else None,
-            ),
+            "INSERT INTO exam_passages (id, year, exam_type, text_number, text) VALUES (?, ?, ?, ?, ?)",
+            (passage_id, payload.year, payload.exam_type, payload.text_number, passage_text),
         )
-        question_ids.append(question_id)
-    conn.commit()
-
-    return {
-        "ok": True,
-        "passage_id": passage_id,
-        "question_ids": question_ids,
-        "analysis_source": analysis_source,
-        "answer_source": answer_source,
-        "questions": [
-            item
-            for item in (_full_question(conn, qid) for qid in question_ids)
-            if item is not None
-        ],
-    }
+        rows = _insert_sentences(conn, passage_id, payload, passage_text, "自动导入")
+        note = payload.answer_source_note.strip() or (
+            "用户提供答案序列，尚未核对权威来源" if answer_source == "provided"
+            else "模型根据文章推断，尚未人工复核"
+        )
+        for question in questions:
+            question_ids.append(_insert_question(
+                conn, passage_id, payload, question, (batch or {}).get(question["number"]),
+                rows, passage_text, answer_source, note,
+            ))
+    items = [_full_question(conn, qid) for qid in question_ids]
+    warnings = ["导入题目尚未人工复核，答案来源不代表答案已核实。"]
+    if "\n\n" not in passage_text:
+        warnings.append("提取文本无明确空行段落；目前作为一段保存，不代表原卷只有一段。")
+    if any(item["locationStatus"] != "exact_quote" for item in items):
+        warnings.append("部分题目无唯一单句证据，保留引文并等待人工定位。")
+    return {"ok": True, "passage_id": passage_id, "question_ids": question_ids,
+            "analysis_source": "deepseek" if batch else "fallback",
+            "answer_source": answer_source, "review_status": "pending",
+            "warnings": warnings, "questions": items}
 
 
 @app.get("/api/vocab/search")
@@ -850,7 +736,7 @@ def tool_search_exams(
     return {"items": citations, "tool_trace": trace}
 
 
-@app.get("/api/agent/runs")
+@app.get("/api/agent/runs", dependencies=[Depends(_team_cli_only)])
 def agent_runs(
     conn: DB,
     limit: int = Query(default=10, ge=1, le=50),

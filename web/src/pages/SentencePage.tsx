@@ -74,6 +74,8 @@ function TreeNodeView({ node, depth = 0 }: { node: TreeNode; depth?: number }) {
 
 export default function SentencePage() {
   const [passages, setPassages] = useState<PassageSummary[]>([])
+  const [passagesStatus, setPassagesStatus] = useState<'loading' | 'ready' | 'error'>('loading')
+  const [sentencesStatus, setSentencesStatus] = useState<'loading' | 'ready' | 'error'>('loading')
   const [passageId, setPassageId] = useState('')
   const [sentences, setSentences] = useState<PassageSentence[]>([])
   const [sentenceId, setSentenceId] = useState('')
@@ -96,20 +98,26 @@ export default function SentencePage() {
       .then((response) => {
         if (!alive) return
         setPassages(response.items)
-        if (response.items[0]) setPassageId(response.items[0].id)
+        setPassageId(response.items[0]?.id ?? '')
+        setPassagesStatus('ready')
       })
       .catch(() => {
-        if (alive) toast('无法读取文章列表，请检查后端服务。', 'error')
+        if (alive) {
+          setPassages([])
+          setPassageId('')
+          setPassagesStatus('error')
+        }
       })
     return () => {
       alive = false
     }
-  }, [toast])
+  }, [])
 
   useEffect(() => {
     if (!passageId) return
     let alive = true
     setSentences([])
+    setSentencesStatus('loading')
     setSentenceId('')
     setBreakdown(null)
     setActiveStep(0)
@@ -118,6 +126,7 @@ export default function SentencePage() {
       .then((response) => {
         if (!alive) return
         setSentences(response.items)
+        setSentencesStatus('ready')
         const longest = response.items.reduce<PassageSentence | null>(
           (best, item) =>
             !best || item.word_count > best.word_count ? item : best,
@@ -127,12 +136,12 @@ export default function SentencePage() {
         if (first) setSentenceId(first.id)
       })
       .catch(() => {
-        if (alive) toast('无法读取该文章的句子。', 'error')
+        if (alive) setSentencesStatus('error')
       })
     return () => {
       alive = false
     }
-  }, [passageId, toast])
+  }, [passageId])
 
   useEffect(() => {
     if (!sentenceId) return
@@ -229,6 +238,49 @@ export default function SentencePage() {
     toast(result.message, result.ok ? 'success' : 'info')
   }
 
+  if (!currentPassage || !currentSentence || sentencesStatus !== 'ready') {
+    const loading = passagesStatus === 'loading' ||
+      (Boolean(currentPassage) && sentencesStatus === 'loading')
+    const error = passagesStatus === 'error' ||
+      (Boolean(currentPassage) && sentencesStatus === 'error')
+    return (
+      <div className="space-y-6">
+        <PageHero eyebrow="SENTENCE STUDIO" title="长难句拆解" />
+        {passages.length > 0 ? (
+          <select
+            value={passageId}
+            onChange={(event) => setPassageId(event.target.value)}
+            aria-label="选择文章"
+            className="h-9 max-w-full rounded-lg border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 outline-none"
+          >
+            {passages.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.year} {item.exam_type} · Text {item.text_number}
+              </option>
+            ))}
+          </select>
+        ) : null}
+        <div
+          role="status"
+          className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white p-8 text-sm text-slate-500"
+        >
+          {loading ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
+              正在读取学习篇章…
+            </>
+          ) : error ? (
+            '无法读取学习内容，请稍后重试。'
+          ) : currentPassage ? (
+            '该篇章暂无可学习的句子。'
+          ) : (
+            '暂无已发布的真题篇章，发布后即可开始学习。'
+          )}
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
       <PageHero
@@ -257,7 +309,6 @@ export default function SentencePage() {
             {passages.map((item) => (
               <option key={item.id} value={item.id}>
                 {item.year} {item.exam_type} · Text {item.text_number}
-                {item.imported ? '（导入）' : '（示例）'}
               </option>
             ))}
           </select>
@@ -565,8 +616,7 @@ export default function SentencePage() {
 
         {agentStatus === 'error' ? (
           <div className="rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 text-xs leading-relaxed text-amber-800">
-            后端未连接，当前仅展示本地拆解结果。启动 FastAPI（端口 8000）后刷新页面，
-            即可看到工具调用链、词库核验与真题溯源。
+            当前无法获取词库核验与真题溯源，请稍后重试。
           </div>
         ) : null}
 

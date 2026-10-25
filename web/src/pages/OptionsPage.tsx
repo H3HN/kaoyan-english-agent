@@ -3,14 +3,11 @@ import {
   ArrowRight,
   CheckCircle2,
   Loader2,
-  Plus,
   XCircle,
 } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
-import { ExamImportForm } from '../components/ExamImportForm'
 import { CitationList, ToolTrace } from '../components/ToolTrace'
 import { Tag, type Tone } from '../components/Tag'
-import { useToast } from '../components/Toast'
 import type { QuestionType } from '../data/content'
 import { api, type FullQuestion, type OptionWorkflow } from '../lib/api'
 import { useAppStore } from '../store/AppStore'
@@ -71,16 +68,8 @@ function buildParagraphs(text: string) {
     .split(/\n{2,}/)
     .map((item) => item.trim())
     .filter(Boolean)
-  if (explicit.length > 1) return explicit
-
-  const sentences = splitSentences(text)
-  if (sentences.length <= 4) return [text]
-  const chunk = Math.ceil(sentences.length / 3)
-  const groups: string[] = []
-  for (let index = 0; index < sentences.length; index += chunk) {
-    groups.push(sentences.slice(index, index + chunk).join(' '))
-  }
-  return groups
+  // Preserve explicit paragraph boundaries; do not invent three paragraphs.
+  return explicit.length ? explicit : [text]
 }
 
 export default function OptionsPage() {
@@ -92,22 +81,27 @@ export default function OptionsPage() {
   })
   const [activeQuestionId, setActiveQuestionId] = useState('')
   const [loadError, setLoadError] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [attempts, setAttempts] = useState<Record<string, Attempt>>({})
   const [selected, setSelected] = useState<OptionKey | null>(null)
   const [showAnalysis, setShowAnalysis] = useState(false)
   const [agentFeedback, setAgentFeedback] = useState<OptionWorkflow | null>(null)
   const [agentError, setAgentError] = useState(false)
-  const [importOpen, setImportOpen] = useState(false)
-  const [searchParams, setSearchParams] = useSearchParams()
+  const [searchParams] = useSearchParams()
   const highlightRef = useRef<HTMLSpanElement>(null)
+  const activeQuestionRef = useRef<string | undefined>(undefined)
   const { addRecord } = useAppStore()
-  const toast = useToast()
 
   useEffect(() => {
-    if (searchParams.get('import') === '1') setImportOpen(true)
+    let alive = true
+    setLoading(true)
+    setLoadError(false)
+    setAllQuestions([])
+    setActiveQuestionId('')
     api
       .getQuestionsFull()
       .then((response) => {
+        if (!alive) return
         setAllQuestions(response.items)
         const paramYear = Number(searchParams.get('year') ?? 0)
         const paramText = Number(searchParams.get('text') ?? 0)
@@ -147,17 +141,16 @@ export default function OptionsPage() {
           setActiveQuestionId(first.id)
         }
       })
-      .catch(() => setLoadError(true))
-  }, [searchParams])
-
-  useEffect(() => {
-    if (!importOpen) return
-    const previous = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
+      .catch(() => {
+        if (alive) setLoadError(true)
+      })
+      .finally(() => {
+        if (alive) setLoading(false)
+      })
     return () => {
-      document.body.style.overflow = previous
+      alive = false
     }
-  }, [importOpen])
+  }, [searchParams])
 
   const groups = useMemo<PassageGroup[]>(() => {
     const map = new Map<string, OptionQuestion[]>()
@@ -223,8 +216,15 @@ export default function OptionsPage() {
   const activeQuestion =
     currentGroup?.questions.find((item) => item.id === activeQuestionId) ??
     currentGroup?.questions[0]
+  const steps = activeQuestion?.steps ?? []
+  const hasCompleteAnalysis = optionKeys.every((key) => {
+    const analysis = activeQuestion?.analysis?.[key]
+    return Boolean(analysis?.trapType?.trim() && analysis.explanation?.trim())
+  })
+  const isBasicPractice = !hasCompleteAnalysis || steps.length === 0
 
   useEffect(() => {
+    activeQuestionRef.current = activeQuestion?.id
     if (!activeQuestion) return
     const attempt = attempts[activeQuestion.id]
     setSelected(attempt?.answer ?? null)
@@ -263,39 +263,16 @@ export default function OptionsPage() {
     if (first) setActiveQuestionId(first.questions[0].id)
   }
 
-  const applyImported = (imported: FullQuestion[]) => {
-    if (imported.length === 0) return
-    const mapped = imported
-    setAllQuestions((prev) => {
-      const existing = new Set(prev.map((item) => item.id))
-      return [...prev, ...mapped.filter((item) => !existing.has(item.id))]
-    })
-    const first = mapped[0]
-    setSelection({
-      year: first.year,
-      examType: first.examType,
-      textNumber: first.textNumber,
-    })
-    setActiveQuestionId(first.id)
-    setImportOpen(false)
-    setSearchParams({})
-    toast(`已导入 ${imported.length} 题。`, 'success')
-  }
-
-  const closeImport = () => {
-    setImportOpen(false)
-    setSearchParams({})
-  }
-
   const handleSubmit = () => {
     if (!selected || !activeQuestion || showAnalysis) return
     const isCorrect = selected === activeQuestion.correctAnswer
-    addRecord({
+    const record = {
       questionId: activeQuestion.id,
       questionType: activeQuestion.questionType as QuestionType,
       userAnswer: selected,
       correctAnswer: activeQuestion.correctAnswer,
-    })
+    }
+    addRecord(record)
     setAttempts((prev) => ({
       ...prev,
       [activeQuestion.id]: { answer: selected, isCorrect },
@@ -303,10 +280,22 @@ export default function OptionsPage() {
     setShowAnalysis(true)
     setAgentFeedback(null)
     setAgentError(false)
+    const questionId = activeQuestion.id
+    if (isBasicPractice || activeQuestion.reviewStatus === 'practice') {
+      // Basic practice uses the saved answer only; do not generate missing analysis.
+      void api.addRecord(record).catch(() => {
+        if (activeQuestionRef.current === questionId) setAgentError(true)
+      })
+      return
+    }
     api
-      .runOptions(activeQuestion.id, selected)
-      .then(setAgentFeedback)
-      .catch(() => setAgentError(true))
+      .runOptions(questionId, selected)
+      .then((feedback) => {
+        if (activeQuestionRef.current === questionId) setAgentFeedback(feedback)
+      })
+      .catch(() => {
+        if (activeQuestionRef.current === questionId) setAgentError(true)
+      })
   }
 
   const currentAttempt = activeQuestion
@@ -315,14 +304,16 @@ export default function OptionsPage() {
 
   if (!currentGroup || !activeQuestion) {
     return (
-      <div className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white p-8 text-sm text-slate-500">
+      <div role="status" className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white p-8 text-sm text-slate-500">
         {loadError ? (
-          '无法读取题库，请确认 FastAPI 已启动。'
-        ) : (
+          '暂时无法读取题库，请稍后重试。'
+        ) : loading ? (
           <>
             <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
             正在加载题库…
           </>
+        ) : (
+          '暂无已发布的真题，发布后即可开始训练。'
         )}
       </div>
     )
@@ -409,17 +400,6 @@ export default function OptionsPage() {
 
         <div className="ml-auto flex items-center gap-2">
           <Tag tone="slate">{currentGroup.questions.length} 题</Tag>
-          <button
-            type="button"
-            onClick={() => {
-              setImportOpen(true)
-              setSearchParams({ import: '1' })
-            }}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-slate-800 px-3 py-2 text-[11px] font-semibold text-white transition-colors hover:bg-slate-900"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            添加真题
-          </button>
         </div>
       </div>
 
@@ -447,7 +427,7 @@ export default function OptionsPage() {
                 </p>
                 <p className="font-serif text-[14.5px] leading-[1.95] text-slate-700">
                   {splitSentences(paragraph).map((sentence, sentenceIndex) => {
-                    const target = showAnalysis
+                    const target = showAnalysis && activeQuestion.locationStatus === 'exact_quote'
                       ? activeQuestion.sourceSentence
                       : ''
                     const isTarget =
@@ -524,7 +504,30 @@ export default function OptionsPage() {
               <Tag tone="violet">{activeQuestion.questionType}</Tag>
               <Tag tone="slate">难度 中等</Tag>
               <Tag tone="slate">建议 6 min</Tag>
+              <Tag tone="amber">
+                {activeQuestion.answerSource === 'inferred'
+                  ? 'AI 推断答案'
+                  : activeQuestion.answerSource === 'provided'
+                    ? '用户提供答案序列'
+                    : activeQuestion.answerSource === 'manual'
+                      ? '手工录入答案'
+                      : '答案来源未记录'}
+              </Tag>
+              <Tag tone="slate">
+                {activeQuestion.reviewStatus === 'approved' || activeQuestion.reviewStatus === 'reviewed'
+                  ? '已人工复核'
+                  : activeQuestion.reviewStatus === 'practice'
+                    ? '基础练习可用'
+                    : '待人工复核'}
+              </Tag>
+              {isBasicPractice ? <Tag tone="slate">解析待完善</Tag> : null}
             </div>
+            <p className="mt-2 text-[11px] leading-relaxed text-amber-700">
+              {activeQuestion.answerSourceNote || '答案来源尚未核实；练习判分依据当前保存答案。'}
+              {activeQuestion.locationStatus === 'exact_quote'
+                ? ' 已匹配唯一原文引句，是否支持答案仍需复核。'
+                : ' 原文位置待人工核对；不自动指定第一句或最长句。'}
+            </p>
 
             <h2 className="mt-4 text-[17px] font-semibold leading-relaxed text-slate-900">
               {activeQuestion.content}
@@ -532,8 +535,9 @@ export default function OptionsPage() {
 
             <div className="mt-4 space-y-2.5">
               {optionKeys.map((key) => {
-                const analysis = activeQuestion.analysis[key]
-                const tone = trapTone(analysis.trapType)
+                const analysis = activeQuestion.analysis?.[key]
+                const trapType = analysis?.trapType?.trim()
+                const tone = trapType ? trapTone(trapType) : 'slate'
                 const isSelected = selected === key
                 if (!showAnalysis) {
                   return (
@@ -577,7 +581,7 @@ export default function OptionsPage() {
                           {activeQuestion.options[key]}
                         </p>
                         <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                          <Tag tone={tone}>{analysis.trapType}</Tag>
+                          {trapType ? <Tag tone={tone}>{trapType}</Tag> : null}
                           {isSelected ? <Tag tone="slate">我的选择</Tag> : null}
                           {key === activeQuestion.correctAnswer ? (
                             <Tag tone="emerald" dot>
@@ -586,7 +590,7 @@ export default function OptionsPage() {
                           ) : null}
                         </div>
                         <p className="mt-2 text-xs leading-relaxed text-slate-500">
-                          {analysis.explanation}
+                          {analysis?.explanation?.trim() || '本选项解析待完善。'}
                         </p>
                       </div>
                     </div>
@@ -622,13 +626,17 @@ export default function OptionsPage() {
               </div>
             ) : null}
 
-            {showAnalysis && activeQuestion.steps.length > 0 ? (
+            {showAnalysis ? (
               <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50/60 p-4">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
                   解题路径
                 </p>
                 <div className="mt-2 space-y-1.5">
-                  {activeQuestion.steps.slice(0, 6).map((step, index) => (
+                  {steps.length === 0 ? (
+                    <p className="text-[11px] leading-relaxed text-slate-500">
+                      解题步骤待完善，当前可依据已保存答案进行练习和判分。
+                    </p>
+                  ) : steps.slice(0, 6).map((step, index) => (
                     <div
                       key={step}
                       className="flex items-start gap-2 text-[11px] leading-relaxed text-slate-600"
@@ -683,17 +691,6 @@ export default function OptionsPage() {
         </section>
       </div>
 
-      {importOpen ? (
-        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-900/30 p-4 backdrop-blur-sm">
-          <div className="my-6 w-full max-w-3xl">
-            <ExamImportForm
-              onClose={closeImport}
-              onImported={(question) => applyImported([question])}
-              onBatchImported={applyImported}
-            />
-          </div>
-        </div>
-      ) : null}
     </div>
   )
 }

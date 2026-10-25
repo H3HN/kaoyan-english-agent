@@ -42,23 +42,43 @@ def _get_sentence_breakdown(
 
 def _context(conn: sqlite3.Connection, context_id: str):
     passage = conn.execute(
-        "SELECT * FROM exam_passages WHERE id = ?", (context_id,)
+        """
+        SELECT p.*
+        FROM exam_passages AS p
+        WHERE p.id = ? AND p.publication_status = 'published'
+        """,
+        (context_id,),
     ).fetchone()
     if not passage:
         passage = conn.execute(
             """
-            SELECT * FROM exam_passages
-            ORDER BY CASE WHEN id LIKE 'auto_%' THEN 0 ELSE 1 END,
-                     year DESC, text_number
+            SELECT p.*
+            FROM exam_passages AS p
+            WHERE p.publication_status = 'published'
+            ORDER BY p.year DESC, p.text_number, p.id
             LIMIT 1
             """
         ).fetchone()
+    if not passage:
+        return None, [], []
     sentences = conn.execute(
-        "SELECT id, text FROM exam_sentences WHERE passage_id = ? ORDER BY sentence_index",
+        """
+        SELECT s.id, s.text
+        FROM exam_sentences AS s
+        JOIN exam_passages AS p ON p.id = s.passage_id
+        WHERE s.passage_id = ? AND p.publication_status = 'published'
+        ORDER BY s.paragraph, s.sentence_index
+        """,
         (passage["id"],),
     ).fetchall()
     questions = conn.execute(
-        "SELECT id FROM exam_questions WHERE passage_id = ? ORDER BY number",
+        """
+        SELECT q.id
+        FROM exam_questions AS q
+        JOIN exam_passages AS p ON p.id = q.passage_id
+        WHERE q.passage_id = ? AND p.publication_status = 'published'
+        ORDER BY q.number
+        """,
         (passage["id"],),
     ).fetchall()
     return passage, sentences, questions
@@ -215,6 +235,14 @@ def _run_chat_deterministic(
     passage, context_sentences, context_questions = _context(conn, context_id)
     tool_trace: list[dict[str, Any]] = []
     citations: list[dict[str, Any]] = []
+    if passage is None:
+        return {
+            "intro": "当前没有已发布的真题篇章，请等待管理员审核发布后再选择学习内容。",
+            "sections": [],
+            "tool_trace": tool_trace,
+            "citations": citations,
+            "llm_policy": "deterministic",
+        }
 
     # 1) 写入单词本：展示 Agent 对软件状态的直接操作
     if "单词本" in message and any(

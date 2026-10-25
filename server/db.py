@@ -24,7 +24,13 @@ CREATE TABLE IF NOT EXISTS exam_passages (
     year INTEGER NOT NULL,
     exam_type TEXT NOT NULL,
     text_number INTEGER NOT NULL,
-    text TEXT NOT NULL
+    text TEXT NOT NULL,
+    publication_status TEXT NOT NULL DEFAULT 'draft',
+    revision INTEGER NOT NULL DEFAULT 1,
+    reviewed_by TEXT NOT NULL DEFAULT '',
+    reviewed_at TEXT NOT NULL DEFAULT '',
+    published_at TEXT NOT NULL DEFAULT '',
+    source_note TEXT NOT NULL DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS exam_sentences (
@@ -37,7 +43,9 @@ CREATE TABLE IF NOT EXISTS exam_sentences (
     sentence_index INTEGER NOT NULL,
     text TEXT NOT NULL,
     grammar_tags TEXT NOT NULL DEFAULT '[]',
-    source_label TEXT NOT NULL
+    source_label TEXT NOT NULL,
+    char_start INTEGER,
+    char_end INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS exam_questions (
@@ -53,7 +61,23 @@ CREATE TABLE IF NOT EXISTS exam_questions (
     correct_answer TEXT NOT NULL,
     analysis_json TEXT NOT NULL,
     steps_json TEXT NOT NULL,
-    source_sentence_id TEXT REFERENCES exam_sentences(id)
+    source_sentence_id TEXT REFERENCES exam_sentences(id),
+    answer_source TEXT NOT NULL DEFAULT 'unknown',
+    answer_source_note TEXT NOT NULL DEFAULT '',
+    review_status TEXT NOT NULL DEFAULT 'pending',
+    source_quote TEXT NOT NULL DEFAULT '',
+    location_status TEXT NOT NULL DEFAULT 'unverified',
+    evidence_note TEXT NOT NULL DEFAULT ''
+);
+
+CREATE TABLE IF NOT EXISTS bank_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    passage_id TEXT NOT NULL,
+    revision INTEGER NOT NULL,
+    action TEXT NOT NULL,
+    actor TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    snapshot_json TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS sentence_breakdowns (
@@ -120,12 +144,50 @@ def connect() -> sqlite3.Connection:
     return conn
 
 
+def migrate_schema(conn: sqlite3.Connection) -> None:
+    """Add import provenance without reclassifying or rewriting legacy data.
+
+    Sentence offsets are nullable Python string character indices into the
+    passage text, using the half-open interval [char_start, char_end).
+    """
+    additions = {
+        "exam_passages": {
+            "publication_status": "TEXT NOT NULL DEFAULT 'draft'",
+            "revision": "INTEGER NOT NULL DEFAULT 1",
+            "reviewed_by": "TEXT NOT NULL DEFAULT ''",
+            "reviewed_at": "TEXT NOT NULL DEFAULT ''",
+            "published_at": "TEXT NOT NULL DEFAULT ''",
+            "source_note": "TEXT NOT NULL DEFAULT ''",
+        },
+        "exam_sentences": {
+            "char_start": "INTEGER",
+            "char_end": "INTEGER",
+        },
+        "exam_questions": {
+            "answer_source": "TEXT NOT NULL DEFAULT 'unknown'",
+            "answer_source_note": "TEXT NOT NULL DEFAULT ''",
+            "review_status": "TEXT NOT NULL DEFAULT 'pending'",
+            "source_quote": "TEXT NOT NULL DEFAULT ''",
+            "location_status": "TEXT NOT NULL DEFAULT 'unverified'",
+            "evidence_note": "TEXT NOT NULL DEFAULT ''",
+        },
+    }
+    for table, columns in additions.items():
+        existing = {
+            row[1] for row in conn.execute(f"PRAGMA table_info({table})")
+        }
+        for name, definition in columns.items():
+            if name not in existing:
+                conn.execute(f"ALTER TABLE {table} ADD COLUMN {name} {definition}")
+
+
 def init_db() -> None:
     from seed import seed_database
 
     conn = connect()
     try:
         conn.executescript(SCHEMA)
+        migrate_schema(conn)
         seed_database(conn)
         conn.commit()
     finally:

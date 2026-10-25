@@ -29,9 +29,13 @@ cd server
 
 首次启动自动初始化 `server/data/app.db`，导入 5,064 条考研词库、2 篇示例文章、8 个句子切片、3 道题、8 条陷阱规则与演示学习数据。
 
-当前本地库另已导入 2023 / 2024 英语一完整阅读 8 篇、40 题，阅读训练页可直接切换 Text 1–4；清单见 [docs/IMPORTED-EXAMS.md](docs/IMPORTED-EXAMS.md)。
+仓库已包含完整共享题库：**68篇、340题、1295句、6份拆句缓存**，含答案、四选项解析和步骤。首次启动后端前执行 `python server/scripts/setup_team.py`，在全新数据库恢复并开放基础练习（已有数据库时拒绝覆盖）。详见[队友复现指南](docs/队友复现指南.md)和[题库清单](docs/IMPORTED-EXAMS.md)。
 
-为了便于其他成员复现，导入内容还导出为可审阅的 `server/data/demo_snapshot.json`，新环境执行 `python server/scripts/load_demo.py` 即可恢复；快照只含导入文章、句子、题目与拆解缓存，不含原始 PDF。
+题库保存在 `server/data/demo_snapshot.json`，不含个人学习记录、密钥或原始PDF。单独运行 `load_demo.py` 仍只恢复草稿；`setup_team.py` 额外校验并开放基础练习，不冒充人工解析审核。模型功能需要队友自行配置API。
+
+## 本次后端阶段交接
+
+王世豪已完成部分与后端队友待接续的原文定位工作，见[阶段交接说明](docs/王世豪-阶段交接.md)。首次运行见[队友复现指南](docs/队友复现指南.md)。
 
 ## 启动 React 工作台
 
@@ -66,11 +70,16 @@ npm run preview
 - 后端：SQLite 领域库、`check_syllabus_vocab` / `search_past_exams` / `add_to_vocab_book` / `record_trap_mistake` 四个工具，以及句子 / 选项 / 对话三类工作流。
 - 状态：单词本与答题记录写入 SQLite；前端仍保留 `localStorage` 作为离线兜底。
 - 生成层：工具检索与状态写入是确定性的；证据敏感问题直接返回工具结果，只有开放讲解使用 DeepSeek，`tool_trace` 与真题出处始终来自工具层，LLM 失败自动回退。
-- 真题导入：阅读训练页「添加真题」支持手动录入，也支持公开 PDF URL 自动抽取文章/题目/选项；答案序列可选，未提供时标记为 AI 推断。
-- 文章选择：阅读训练、长难句拆解、AI 对话均从 SQLite 的 passage 动态加载，导入新文章后自动出现在选择器里。
+- 团队建库：通过 `server/scripts/question_bank.py` 批量导入 JSON 草稿、生成解析、人工审核并发布；PDF 是可选的 JSON 预处理来源，学生端无导入入口。旧 HTTP 导入接口返回 410。
+- 文章选择：阅读训练、长难句拆解、AI 对话仅从 SQLite 读取已发布篇章。更正后撤回草稿并重新审核发布。操作见 [题库建库与发布说明](docs/题库建库与发布操作说明.md)。
 - 数据：公共考研词库（BSD-3-Clause，去重后 5,064 条）、2 篇内置示例与 8 篇导入真题；频次是**当前 153 个句子切片内的出现次数**，不是 2010–2026 全量统计。
 
 ## 文档
+
+- [团队题库建库、审核、发布与更正（当前入口）](docs/题库建库与发布操作说明.md)
+- [王世豪：第一阶段导入可靠性修改记录](docs/王世豪-真题导入修改说明.md)
+
+历史文档中的页面导入、直接加载快照即学习等描述，以当前建库发布说明为准。
 
 - [本地启动与配置教程](docs/LOCAL-SETUP.md)
 - [前后端分离架构](docs/ARCHITECTURE.md)

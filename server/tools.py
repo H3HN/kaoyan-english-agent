@@ -163,13 +163,13 @@ def search_past_exams(
     limit: int = 5,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     started = time.perf_counter()
-    clauses: list[str] = []
+    clauses = ["p.publication_status = 'published'"]
     params: list[Any] = []
 
     query = (query or "").strip()
     if query:
         snippet = query[:80]
-        clauses.append("(lower(text) LIKE ? OR lower(source_label) LIKE ?)")
+        clauses.append("(lower(s.text) LIKE ? OR lower(s.source_label) LIKE ?)")
         params.extend([f"%{snippet.lower()}%", f"%{snippet.lower()}%"])
 
     tags: list[str] = []
@@ -180,16 +180,18 @@ def search_past_exams(
     if tags:
         tag_clauses = []
         for tag in tags[:4]:
-            tag_clauses.append("grammar_tags LIKE ?")
+            tag_clauses.append("s.grammar_tags LIKE ?")
             params.append(f"%{tag}%")
         clauses.append("(" + " OR ".join(tag_clauses) + ")")
 
-    where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+    where = f"WHERE {' AND '.join(clauses)}"
     rows = conn.execute(
         f"""
-        SELECT * FROM exam_sentences
+        SELECT s.*
+        FROM exam_sentences AS s
+        JOIN exam_passages AS p ON p.id = s.passage_id
         {where}
-        ORDER BY year DESC, passage_id, sentence_index
+        ORDER BY s.year DESC, s.passage_id, s.paragraph, s.sentence_index
         LIMIT ?
         """,
         (*params, max(1, min(limit, 20))),
@@ -219,9 +221,18 @@ def search_past_exams(
     return citations, trace
 
 
-def get_sentence(conn: sqlite3.Connection, sentence_id: str) -> dict[str, Any] | None:
+def get_sentence(
+    conn: sqlite3.Connection, sentence_id: str, *, include_drafts: bool = False
+) -> dict[str, Any] | None:
+    publication_clause = "" if include_drafts else "AND p.publication_status = 'published'"
     row = conn.execute(
-        "SELECT * FROM exam_sentences WHERE id = ?", (sentence_id,)
+        f"""
+        SELECT s.*
+        FROM exam_sentences AS s
+        JOIN exam_passages AS p ON p.id = s.passage_id
+        WHERE s.id = ? {publication_clause}
+        """,
+        (sentence_id,),
     ).fetchone()
     if not row:
         return None
@@ -236,12 +247,23 @@ def get_sentence(conn: sqlite3.Connection, sentence_id: str) -> dict[str, Any] |
         "text": row["text"],
         "grammar_tags": json.loads(row["grammar_tags"] or "[]"),
         "source": row["source_label"],
+        "char_start": row["char_start"],
+        "char_end": row["char_end"],
     }
 
 
-def get_question(conn: sqlite3.Connection, question_id: str) -> dict[str, Any] | None:
+def get_question(
+    conn: sqlite3.Connection, question_id: str, *, include_drafts: bool = False
+) -> dict[str, Any] | None:
+    publication_clause = "" if include_drafts else "AND p.publication_status = 'published'"
     row = conn.execute(
-        "SELECT * FROM exam_questions WHERE id = ?", (question_id,)
+        f"""
+        SELECT q.*
+        FROM exam_questions AS q
+        JOIN exam_passages AS p ON p.id = q.passage_id
+        WHERE q.id = ? {publication_clause}
+        """,
+        (question_id,),
     ).fetchone()
     if not row:
         return None
@@ -265,12 +287,23 @@ def get_question(conn: sqlite3.Connection, question_id: str) -> dict[str, Any] |
         },
         "steps": json.loads(row["steps_json"]),
         "source_sentence_id": row["source_sentence_id"],
+        "answer_source": row["answer_source"],
+        "answer_source_note": row["answer_source_note"],
+        "review_status": row["review_status"],
+        "source_quote": row["source_quote"],
+        "location_status": row["location_status"],
     }
 
 
 def list_sentences(conn: sqlite3.Connection) -> list[dict[str, Any]]:
     rows = conn.execute(
-        "SELECT id, source_label, grammar_tags, text FROM exam_sentences ORDER BY year DESC, sentence_index"
+        """
+        SELECT s.id, s.source_label, s.grammar_tags, s.text
+        FROM exam_sentences AS s
+        JOIN exam_passages AS p ON p.id = s.passage_id
+        WHERE p.publication_status = 'published'
+        ORDER BY s.year DESC, s.paragraph, s.sentence_index
+        """
     ).fetchall()
     return [
         {
@@ -285,7 +318,14 @@ def list_sentences(conn: sqlite3.Connection) -> list[dict[str, Any]]:
 
 def list_questions(conn: sqlite3.Connection) -> list[dict[str, Any]]:
     rows = conn.execute(
-        "SELECT id, year, exam_type, text_number, number, question_type, content, correct_answer FROM exam_questions ORDER BY year DESC, number"
+        """
+        SELECT q.id, q.year, q.exam_type, q.text_number, q.number,
+               q.question_type, q.content, q.correct_answer
+        FROM exam_questions AS q
+        JOIN exam_passages AS p ON p.id = q.passage_id
+        WHERE p.publication_status = 'published'
+        ORDER BY q.year DESC, q.passage_id, q.number
+        """
     ).fetchall()
     return [dict(row) for row in rows]
 
@@ -569,13 +609,23 @@ def get_meta(conn: sqlite3.Connection) -> dict[str, Any]:
             "SELECT COUNT(*) FROM syllabus_vocabulary"
         ).fetchone()[0],
         "sentence_count": conn.execute(
-            "SELECT COUNT(*) FROM exam_sentences"
+            """
+            SELECT COUNT(*)
+            FROM exam_sentences AS s
+            JOIN exam_passages AS p ON p.id = s.passage_id
+            WHERE p.publication_status = 'published'
+            """
         ).fetchone()[0],
         "question_count": conn.execute(
-            "SELECT COUNT(*) FROM exam_questions"
+            """
+            SELECT COUNT(*)
+            FROM exam_questions AS q
+            JOIN exam_passages AS p ON p.id = q.passage_id
+            WHERE p.publication_status = 'published'
+            """
         ).fetchone()[0],
         "passage_count": conn.execute(
-            "SELECT COUNT(*) FROM exam_passages"
+            "SELECT COUNT(*) FROM exam_passages AS p WHERE p.publication_status = 'published'"
         ).fetchone()[0],
         "trap_count": conn.execute("SELECT COUNT(*) FROM trap_rules").fetchone()[0],
         "wordbook_count": conn.execute(

@@ -105,10 +105,16 @@ export interface FullQuestion {
   content: string
   options: Record<string, string>
   correctAnswer: string
-  analysis: Record<string, { trapType: string; explanation: string }>
-  steps: string[]
+  analysis?: Partial<Record<string, { trapType?: string | null; explanation?: string | null } | null>> | null
+  steps?: string[] | null
   location: string
   sourceSentence: string
+  sourceSentenceId?: string | null
+  answerSource?: 'provided' | 'inferred' | 'manual' | 'unknown'
+  answerSourceNote?: string
+  reviewStatus?: string
+  locationStatus?: string
+  sourceQuote?: string
   sourceHighlights: string[]
   passage: string
   passageId: string
@@ -135,6 +141,7 @@ export interface AutoImportPayload {
   exam_type: string
   text_number: number
   answer_key?: string
+  answer_source_note?: string
 }
 
 export interface AutoImportResponse {
@@ -143,6 +150,8 @@ export interface AutoImportResponse {
   question_ids: string[]
   analysis_source: 'deepseek' | 'fallback'
   answer_source: 'provided' | 'inferred'
+  review_status?: string
+  warnings?: string[]
   questions: FullQuestion[]
 }
 
@@ -265,10 +274,15 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     ...init,
   })
   if (!response.ok) {
-    const detail = await response.text().catch(() => '')
-    throw new Error(
-      `API ${response.status}${detail ? `: ${detail.slice(0, 160)}` : ''}`,
-    )
+    const body = await response.json().catch(() => null)
+    const detail = body?.detail
+    const message = typeof detail === 'string'
+      ? detail
+      : Array.isArray(detail)
+        ? detail.map((item: { msg?: string }) => item.msg ?? '字段无效').join('；')
+        : [detail?.message, ...(detail?.issues ?? [])].filter(Boolean).join('；')
+    throw new Error(message || `API ${response.status}：请求失败`)
+
   }
   return (await response.json()) as T
 }

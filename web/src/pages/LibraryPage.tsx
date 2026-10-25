@@ -47,7 +47,7 @@ export default function LibraryPage() {
       <PageHero
         eyebrow="MATERIAL LIBRARY"
         title="资料库"
-        subtitle="直接翻阅内置的考研大纲词库与真题篇章，看到有用的内容一键收进「我的单词本」，或跳去对应训练页。"
+        subtitle="直接翻阅考研大纲词库与已发布的真题篇章，看到有用的内容一键收进「我的单词本」，或跳去对应训练页。"
         actions={
           <div className="flex items-center gap-2 rounded-xl border border-white/15 bg-white/5 p-1">
             <button
@@ -409,7 +409,7 @@ function ExamBrowser() {
   if (passages.length === 0) {
     return (
       <p className="rounded-xl border border-slate-200 bg-white py-16 text-center text-sm text-slate-400">
-        真题库还是空的，可以到「阅读真题训练」页导入。
+        暂无已发布的真题篇章，发布后即可开始学习。
       </p>
     )
   }
@@ -430,9 +430,7 @@ function ExamBrowser() {
                 <span className="text-sm font-semibold text-slate-900">
                   {passage.year} {passage.exam_type} Text {passage.text_number}
                 </span>
-                <Tag tone={passage.imported ? 'emerald' : 'slate'}>
-                  {passage.imported ? '已导入' : '待导入'}
-                </Tag>
+                <Tag tone="emerald">学习篇章</Tag>
               </div>
               <p className="mt-2 line-clamp-3 text-xs leading-relaxed text-slate-500">
                 {passage.preview}

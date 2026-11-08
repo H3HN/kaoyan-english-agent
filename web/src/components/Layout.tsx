@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import { useAppStore } from '../store/AppStore'
+import { toneStyles, type Tone } from './Tag'
 
 type NavTone = 'home' | 'feature' | 'default'
 
@@ -25,14 +26,15 @@ type NavItem = {
   icon: LucideIcon
   end?: boolean
   tone?: NavTone
+  accent?: Tone
 }
 
 const navItems: NavItem[] = [
   { to: '/', label: '首页', icon: LayoutDashboard, end: true, tone: 'home' },
-  { to: '/sentence', label: '长难句拆解', icon: ScanText, tone: 'feature' },
-  { to: '/options', label: '阅读真题训练', icon: Target, tone: 'feature' },
-  { to: '/chat', label: 'AI 对话', icon: MessageSquareText, tone: 'feature' },
-  { to: '/wordbook', label: '我的单词本', icon: BookMarked, tone: 'feature' },
+  { to: '/sentence', label: '长难句拆解', icon: ScanText, tone: 'feature', accent: 'blue' },
+  { to: '/options', label: '阅读真题训练', icon: Target, tone: 'feature', accent: 'emerald' },
+  { to: '/chat', label: 'AI 对话', icon: MessageSquareText, tone: 'feature', accent: 'violet' },
+  { to: '/wordbook', label: '我的单词本', icon: BookMarked, tone: 'feature', accent: 'amber' },
   { to: '/library', label: '资料库', icon: Layers },
   { to: '/report', label: '学习报告', icon: BarChart3 },
   { to: '/knowledge', label: '领域知识库', icon: LibraryBig },
@@ -117,72 +119,71 @@ function SidebarContent({
           学习工作台
         </p>
         <nav className="mt-2 space-y-1.5" aria-label="主导航">
-          {navItems.map(({ to, label, icon: Icon, end, tone }) => (
-            <NavLink
-              key={to}
-              to={to}
-              end={end}
-              onClick={onNavigate}
-              className={({ isActive }) => {
-                const base =
-                  'group flex items-center gap-3 rounded-lg transition-colors'
-                if (tone === 'home') {
-                  return `${base} px-3.5 py-3.5 text-[15px] font-bold shadow-sm ${
+          {navItems.map(({ to, label, icon: Icon, end, tone, accent }) => {
+            const accentStyles = accent ? toneStyles[accent] : null
+            return (
+              <NavLink
+                key={to}
+                to={to}
+                end={end}
+                onClick={onNavigate}
+                className={({ isActive }) => {
+                  const base =
+                    'group flex items-center gap-3 rounded-lg transition-colors'
+                  if (tone === 'home') {
+                    return `${base} px-3.5 py-3.5 text-[15px] font-bold shadow-sm ${
+                      isActive
+                        ? 'bg-slate-900 text-white'
+                        : 'border border-slate-200 bg-white text-slate-900 hover:border-slate-300 hover:bg-slate-50'
+                    }`
+                  }
+                  if (tone === 'feature' && accentStyles) {
+                    return `${base} border px-3 py-2.5 text-[13px] font-semibold shadow-sm ${
+                      isActive
+                        ? `${accentStyles.bar} border-transparent text-white`
+                        : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'
+                    }`
+                  }
+                  return `${base} border border-slate-200 px-3 py-2.5 text-[13px] shadow-sm ${
                     isActive
-                      ? 'bg-slate-900 text-white'
-                      : 'border border-slate-200 bg-white text-slate-900 hover:border-slate-300 hover:bg-slate-50'
+                      ? 'bg-slate-100 font-semibold text-slate-900'
+                      : 'bg-white font-medium text-slate-500 hover:bg-slate-50 hover:text-slate-800'
                   }`
-                }
-                if (tone === 'feature') {
-                  return `${base} border px-3 py-2.5 text-[13px] font-semibold shadow-sm ${
-                    isActive
-                      ? 'border-amber-600 bg-amber-600 text-white'
-                      : 'border-slate-200 bg-white text-amber-600 hover:bg-amber-50/70 hover:text-amber-700'
-                  }`
-                }
-                return `${base} border border-slate-200 px-3 py-2.5 text-[13px] shadow-sm ${
-                  isActive
-                    ? 'bg-slate-100 font-semibold text-slate-900'
-                    : 'bg-white font-medium text-slate-500 hover:bg-slate-50 hover:text-slate-800'
-                }`
-              }}
-            >
-              {({ isActive }) => (
-                <>
-                  <Icon
-                    className={`shrink-0 ${
-                      tone === 'home' ? 'h-5 w-5' : 'h-[18px] w-[18px]'
-                    } ${
-                      tone === 'home'
-                        ? isActive
-                          ? 'text-white'
-                          : 'text-slate-700'
-                        : tone === 'feature'
-                          ? isActive
+                }}
+              >
+                {({ isActive }) => (
+                  <>
+                    <Icon
+                      className={`shrink-0 ${
+                        tone === 'home' ? 'h-5 w-5' : 'h-[18px] w-[18px]'
+                      } ${
+                        isActive
+                          ? tone === 'home' || tone === 'feature'
                             ? 'text-white'
-                            : 'text-amber-600'
-                          : isActive
-                            ? 'text-slate-800'
-                            : 'text-slate-400 group-hover:text-slate-600'
-                    }`}
-                    strokeWidth={tone === 'home' ? 2 : 1.8}
-                  />
-                  <span className="min-w-0 flex-1 truncate">{label}</span>
-                  {isActive ? (
-                    <span
-                      className={`h-1.5 w-1.5 shrink-0 rounded-full ${
-                        tone === 'home'
-                          ? 'bg-white'
-                          : tone === 'feature'
+                            : 'text-slate-800'
+                          : accentStyles
+                            ? accentStyles.icon
+                            : tone === 'home'
+                              ? 'text-slate-700'
+                              : 'text-slate-400 group-hover:text-slate-600'
+                      }`}
+                      strokeWidth={tone === 'home' ? 2 : 1.8}
+                    />
+                    <span className="min-w-0 flex-1 truncate">{label}</span>
+                    {isActive ? (
+                      <span
+                        className={`h-1.5 w-1.5 shrink-0 rounded-full ${
+                          tone === 'home' || tone === 'feature'
                             ? 'bg-white'
                             : 'bg-slate-800'
-                      }`}
-                    />
-                  ) : null}
-                </>
-              )}
-            </NavLink>
-          ))}
+                        }`}
+                      />
+                    ) : null}
+                  </>
+                )}
+              </NavLink>
+            )
+          })}
         </nav>
       </div>
 

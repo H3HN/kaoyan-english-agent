@@ -228,6 +228,15 @@ export default function SentencePage() {
     ? analysis.tree
     : [{ role: '整句', label: analysis.original }]
 
+  // 后端未配置模型时会返回「工具兜底」拆解：只有整句，没有从句 / 修饰 / 翻译 / 语法点。
+  const isToolFallback =
+    !analysis.llmUsed &&
+    !analysis.translation &&
+    analysis.clauses.length === 0 &&
+    analysis.modifiers.length === 0 &&
+    analysis.grammar.length === 0
+  const stepEnabled = STEP_LABELS.map((_, index) => index === 0 || !isToolFallback)
+
   const handleArchiveWord = (entry: VocabEntry) => {
     const result = addWord({
       spelling: entry.word,
@@ -409,19 +418,28 @@ export default function SentencePage() {
               {STEP_LABELS.map((step, index) => {
                 const Icon = step.icon
                 const isActive = index === activeStep
+                const enabled = stepEnabled[index]
                 return (
                   <button
                     key={step.title}
                     type="button"
                     onClick={() => setActiveStep(index)}
-                    className="group flex flex-col items-center gap-2 text-center"
+                    disabled={!enabled}
+                    title={
+                      enabled
+                        ? undefined
+                        : '当前句子尚未生成这一步，配置模型后可生成'
+                    }
+                    className="group flex flex-col items-center gap-2 text-center disabled:cursor-not-allowed"
                     aria-current={isActive ? 'step' : undefined}
                   >
                     <span
                       className={`relative z-10 flex h-8 w-8 items-center justify-center rounded-full border text-[11px] font-semibold transition-all ${
                         isActive
                           ? 'border-slate-800 bg-slate-800 text-white shadow-sm'
-                          : 'border-slate-200 bg-white text-slate-400 group-hover:border-slate-300 group-hover:text-slate-600'
+                          : enabled
+                            ? 'border-slate-200 bg-white text-slate-400 group-hover:border-slate-300 group-hover:text-slate-600'
+                            : 'border-dashed border-slate-200 bg-slate-50 text-slate-300'
                       }`}
                     >
                       {isActive ? (
@@ -434,7 +452,9 @@ export default function SentencePage() {
                       className={`text-[11px] leading-tight ${
                         isActive
                           ? 'font-semibold text-slate-900'
-                          : 'font-medium text-slate-400 group-hover:text-slate-600'
+                          : enabled
+                            ? 'font-medium text-slate-400 group-hover:text-slate-600'
+                            : 'font-medium text-slate-300'
                       }`}
                     >
                       {index + 1}. {step.title}
@@ -444,6 +464,20 @@ export default function SentencePage() {
               })}
             </div>
           </div>
+
+          {isToolFallback ? (
+            <div className="mt-4 flex items-start gap-2.5 rounded-lg border border-amber-200 bg-amber-50 px-3.5 py-3">
+              <Lightbulb className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-600" />
+              <div className="min-w-0 text-[11px] leading-relaxed">
+                <p className="font-semibold text-amber-900">
+                  当前句子还没有生成完整拆解
+                </p>
+                <p className="mt-0.5 text-amber-700">
+                  第 2–5 步依赖模型能力：在 server/.env 配置 LLM_API_KEY 后重新打开该句即可生成，生成结果会缓存到数据库。
+                </p>
+              </div>
+            </div>
+          ) : null}
 
           <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50/70 p-4 sm:p-5">
             <div className="flex flex-wrap items-center justify-between gap-2">

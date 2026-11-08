@@ -10,7 +10,7 @@ import {
   Wrench,
   Target,
 } from 'lucide-react'
-import { Tag } from '../components/Tag'
+import { Tag, toneStyles } from '../components/Tag'
 import {
   api,
   type ChatWorkflow,
@@ -74,7 +74,47 @@ const presetPrompts = [
   },
 ]
 
+const starterPrompts = [
+  {
+    title: '解析这个句子的从句',
+    desc: '五步拆主干、从句与修饰',
+    prompt: '请按五步法解析当前上下文中的长难句，标出主干、从句和修饰。',
+    icon: GitBranch,
+    accent: 'blue' as const,
+  },
+  {
+    title: '分析这道题的错误选项',
+    desc: '逐项标注陷阱类型与定位句',
+    prompt: '请分析当前上下文中第一道题的四个选项，标注陷阱类型。',
+    icon: Target,
+    accent: 'emerald' as const,
+  },
+  {
+    title: '安排本周复习计划',
+    desc: '按单词本掌握度排复习节奏',
+    prompt: '请根据我的单词本，安排本周的复习计划。',
+    icon: CalendarDays,
+    accent: 'amber' as const,
+  },
+  {
+    title: '查一个熟词僻义',
+    desc: 'address / plant / subject 等',
+    prompt: 'address、plant、subject 在考研里有哪些熟词僻义？',
+    icon: Languages,
+    accent: 'violet' as const,
+  },
+]
+
 function AssistantBubble({ message }: { message: ChatMessage }) {
+  const provenance =
+    message.source === 'local'
+      ? { tone: 'amber' as const, label: '本地兜底' }
+      : message.llmUsed
+        ? { tone: 'violet' as const, label: 'DeepSeek 生成' }
+        : message.tools?.length
+          ? { tone: 'emerald' as const, label: '工具直答' }
+          : null
+
   return (
     <div className="w-full max-w-4xl">
       <div className="mb-1.5 flex items-center gap-2">
@@ -84,6 +124,11 @@ function AssistantBubble({ message }: { message: ChatMessage }) {
         <span className="text-[11px] font-semibold text-slate-700">
           研英 Agent
         </span>
+        {provenance ? (
+          <Tag tone={provenance.tone} className="text-[9px]">
+            {provenance.label}
+          </Tag>
+        ) : null}
       </div>
       <div className="rounded-2xl rounded-tl-md border border-slate-200 bg-slate-50/80 p-4">
         {message.intro ? (
@@ -137,15 +182,6 @@ function AssistantBubble({ message }: { message: ChatMessage }) {
               <span className="text-[9px] font-semibold uppercase tracking-[0.14em] text-slate-400">
                 Tool trace
               </span>
-              {message.llmUsed ? (
-                <Tag tone="violet" className="ml-auto text-[9px]">
-                  DeepSeek 生成
-                </Tag>
-              ) : message.source === 'local' ? (
-                <Tag tone="amber" className="ml-auto text-[9px]">
-                  本地兜底
-                </Tag>
-              ) : null}
             </div>
             {message.tools?.length ? (
               <div className="mt-1.5 flex flex-wrap gap-1.5">
@@ -219,7 +255,7 @@ export default function ChatPage() {
     const node = textareaRef.current
     if (!node) return
     node.style.height = 'auto'
-    node.style.height = `${Math.min(node.scrollHeight, 112)}px`
+    node.style.height = `${Math.min(node.scrollHeight + 2, 112)}px`
   }, [input])
 
   const send = async (raw?: string) => {
@@ -279,6 +315,8 @@ export default function ChatPage() {
     setMessages(initialMessages)
     toast('对话已重置。', 'info')
   }
+
+  const showStarter = messages.length === 1
 
   return (
     <div className="h-[calc(100dvh-104px)] min-h-[560px] lg:h-[calc(100dvh-64px)]">
@@ -341,7 +379,7 @@ export default function ChatPage() {
           ref={scrollRef}
           className="scrollbar-thin flex-1 space-y-4 overflow-y-auto p-4 sm:p-6"
         >
-          {messages.map((message) =>
+          {showStarter ? null : messages.map((message) =>
             message.role === 'assistant' ? (
               <AssistantBubble key={message.id} message={message} />
             ) : (
@@ -371,22 +409,81 @@ export default function ChatPage() {
               </div>
             </div>
           ) : null}
+
+          {showStarter ? (
+            <div className="mx-auto flex min-h-full w-full max-w-2xl flex-col justify-center pb-6">
+              <div className="text-center">
+                <span className="mx-auto flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-800 text-white shadow-sm">
+                  <Sparkles className="h-5 w-5" />
+                </span>
+                <h2 className="mt-3 text-lg font-bold tracking-tight text-slate-900">
+                  把阅读训练，拆成可复用的工作流
+                </h2>
+                <p className="mt-1.5 text-[11px] leading-relaxed text-slate-500">
+                  {context
+                    ? `当前上下文：${context.year} ${context.exam_type} · Text ${context.text_number} · ${context.sentence_count} 句 · ${context.question_count} 题`
+                    : '正在读取题库…'}
+                </p>
+              </div>
+
+              <div className="mt-5 grid gap-2.5 sm:grid-cols-2">
+                {starterPrompts.map((item) => {
+                  const styles = toneStyles[item.accent]
+                  const Icon = item.icon
+                  return (
+                    <button
+                      key={item.title}
+                      type="button"
+                      onClick={() => void send(item.prompt)}
+                      disabled={typing || !contextId}
+                      className="group flex items-start gap-3 rounded-xl border border-slate-200 bg-white p-3.5 text-left shadow-sm shadow-slate-900/[0.02] transition-all hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <span
+                        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${styles.soft}`}
+                      >
+                        <Icon
+                          className={`h-4 w-4 ${styles.icon}`}
+                          strokeWidth={1.8}
+                        />
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block text-xs font-semibold text-slate-800">
+                          {item.title}
+                        </span>
+                        <span className="mt-0.5 block text-[11px] leading-relaxed text-slate-400">
+                          {item.desc}
+                        </span>
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+
+              <p className="mt-3 text-center text-[10px] text-slate-400">
+                {connected
+                  ? '后端已连接 · 证据类问题由工具直接回答，不经过模型改写'
+                  : '后端未连接 · 启动 FastAPI 后自动恢复'}
+              </p>
+            </div>
+          ) : null}
         </div>
 
         <div className="border-t border-slate-200 bg-slate-50/50 p-3 sm:p-4">
-          <div className="mb-2 flex gap-1.5 overflow-x-auto pb-1">
-            {presetPrompts.map((preset) => (
-              <button
-                key={preset.title}
-                type="button"
-                onClick={() => void send(preset.prompt)}
-                disabled={typing}
-                className="shrink-0 whitespace-nowrap rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-500 transition-colors hover:border-slate-300 hover:text-slate-800 disabled:opacity-50"
-              >
-                {preset.title}
-              </button>
-            ))}
-          </div>
+          {showStarter ? null : (
+            <div className="mb-2 flex gap-1.5 overflow-x-auto pb-1">
+              {presetPrompts.map((preset) => (
+                <button
+                  key={preset.title}
+                  type="button"
+                  onClick={() => void send(preset.prompt)}
+                  disabled={typing}
+                  className="shrink-0 whitespace-nowrap rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-500 transition-colors hover:border-slate-300 hover:text-slate-800 disabled:opacity-50"
+                >
+                  {preset.title}
+                </button>
+              ))}
+            </div>
+          )}
 
           <div className="flex items-end gap-2">
             <textarea
@@ -402,7 +499,7 @@ export default function ChatPage() {
               rows={1}
               aria-label="向 Agent 提问"
               placeholder="向 Agent 提问：解析此句从句、提炼核心词、分析选项…"
-              className="max-h-28 min-h-[44px] flex-1 resize-none rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm leading-6 text-slate-800 outline-none transition-colors placeholder:text-slate-400 focus:border-slate-300"
+              className="scrollbar-thin max-h-28 min-h-[44px] flex-1 resize-none rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm leading-6 text-slate-800 outline-none transition-colors placeholder:text-slate-400 focus:border-slate-300"
             />
             <button
               type="button"

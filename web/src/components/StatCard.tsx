@@ -9,6 +9,7 @@ interface StatCardProps {
   icon?: LucideIcon
   accent?: Tone
   to?: string
+  loading?: boolean
 }
 
 export function StatCard({
@@ -18,6 +19,7 @@ export function StatCard({
   icon: Icon,
   accent = 'blue',
   to,
+  loading = false,
 }: StatCardProps) {
   const styles = toneStyles[accent]
   const body = (
@@ -26,9 +28,13 @@ export function StatCard({
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="truncate text-xs font-medium text-slate-500">{label}</p>
-          <p className="mt-2 text-3xl font-bold tracking-tight text-slate-900 tabular-nums">
-            {value}
-          </p>
+          {loading ? (
+            <span className="mt-3 block h-8 w-24 animate-pulse rounded-md bg-slate-100" />
+          ) : (
+            <p className="mt-2 text-3xl font-bold tracking-tight text-slate-900 tabular-nums">
+              {value}
+            </p>
+          )}
         </div>
         {Icon ? (
           <span
@@ -38,9 +44,13 @@ export function StatCard({
           </span>
         ) : null}
       </div>
-      {hint ? (
-        <p className="mt-3 text-[11px] leading-relaxed text-slate-400">{hint}</p>
-      ) : null}
+      <div className="mt-3 min-h-[2.1rem]">
+        {loading ? (
+          <span className="block h-3 w-40 animate-pulse rounded bg-slate-100" />
+        ) : hint ? (
+          <p className="text-[11px] leading-relaxed text-slate-400">{hint}</p>
+        ) : null}
+      </div>
     </>
   )
 
@@ -51,7 +61,7 @@ export function StatCard({
     return (
       <Link
         to={to}
-        className={`${base} block transition-all hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md hover:shadow-slate-900/[0.06] focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400`}
+        className={`${base} block transition-all hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md hover:shadow-slate-900/[0.06]`}
       >
         {body}
       </Link>

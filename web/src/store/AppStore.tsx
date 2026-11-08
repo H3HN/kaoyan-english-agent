@@ -12,7 +12,8 @@ import { seedRecords, seedWords } from '../data/seeds'
 import type { QuestionType } from '../data/content'
 import { api } from '../lib/api'
 
-export const REVIEW_INTERVALS = [1, 2, 4, 7, 15, 30]
+// 与后端 SM-2 的 interval_days 倍增规则一致：1 → 2 → 4 → 8 → 16 → 30（封顶）。
+export const REVIEW_INTERVALS = [1, 2, 4, 8, 16, 30]
 const STORAGE_KEY = 'kaoyan-studio-v1'
 
 interface PersistedState {
@@ -194,7 +195,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           const nextCount = word.reviewCount + 1
           const interval = remembered
             ? REVIEW_INTERVALS[
-                Math.min(nextCount - 1, REVIEW_INTERVALS.length - 1)
+                Math.min(nextCount, REVIEW_INTERVALS.length - 1)
               ]
             : 1
           return {
@@ -212,7 +213,24 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       if (target) {
         void api
           .reviewWord(target.spelling, remembered)
-          .then(() => setConnected(true))
+          .then((response) => {
+            setConnected(true)
+            // 复习间隔以后端 SM-2 结果为准，避免前后端两套算法漂移。
+            const updated = response.word
+            if (!updated) return
+            setWords((prev) =>
+              prev.map((word) =>
+                word.id === id
+                  ? {
+                      ...word,
+                      familiarity: updated.familiarity,
+                      reviewCount: updated.reviewCount,
+                      nextReview: updated.nextReview,
+                    }
+                  : word,
+              ),
+            )
+          })
           .catch(() => setConnected(false))
       }
     },

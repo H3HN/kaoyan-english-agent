@@ -57,6 +57,7 @@ const features = [
 export default function DashboardPage() {
   const { words, records, dueWords, connected } = useAppStore()
   const [meta, setMeta] = useState<MetaInfo | null>(null)
+  const [metaFailed, setMetaFailed] = useState(false)
 
   useEffect(() => {
     let alive = true
@@ -65,11 +66,14 @@ export default function DashboardPage() {
       .then((data) => {
         if (alive) setMeta(data)
       })
-      .catch(() => {})
+      .catch(() => {
+        if (alive) setMetaFailed(true)
+      })
     return () => {
       alive = false
     }
   }, [])
+  const metaLoading = !meta && !metaFailed
   const averageFamiliarity =
     words.length > 0
       ? words.reduce((sum, word) => sum + word.familiarity, 0) / words.length
@@ -104,10 +108,13 @@ export default function DashboardPage() {
         <StatCard
           label="真题篇章"
           value={meta ? meta.passage_count : '—'}
+          loading={metaLoading}
           hint={
             meta
               ? `${meta.question_count} 道题目 · ${meta.sentence_count} 个句子 · 点击浏览`
-              : '等待后端数据'
+              : metaFailed
+                ? '后端未连接 · 启动 FastAPI 后自动恢复'
+                : '正在读取题库'
           }
           icon={BookOpenCheck}
           accent="blue"
@@ -116,7 +123,14 @@ export default function DashboardPage() {
         <StatCard
           label="大纲词汇"
           value={meta ? meta.vocab_count.toLocaleString('zh-CN') : '—'}
-          hint={meta ? 'SQLite 考研词库 · 去重后 · 点击浏览' : '等待后端数据'}
+          loading={metaLoading}
+          hint={
+            meta
+              ? 'SQLite 考研词库 · 去重后 · 点击浏览'
+              : metaFailed
+                ? '后端未连接 · 数据暂不可用'
+                : '正在读取词库'
+          }
           icon={LibraryBig}
           accent="cyan"
           to="/library?tab=vocab"

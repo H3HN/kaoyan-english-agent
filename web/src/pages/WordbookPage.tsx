@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import {
+  ArrowLeft,
   ArrowRight,
   BookMarked,
   CalendarDays,
@@ -39,6 +40,7 @@ export default function WordbookPage() {
   const [reviewedIds, setReviewedIds] = useState<string[]>([])
   const [sessionIds, setSessionIds] = useState<string[] | null>(null)
   const [revealed, setRevealed] = useState(false)
+  const [focusWordId, setFocusWordId] = useState<string | null>(null)
   const [form, setForm] = useState({ spelling: '', meaning: '', source: '' })
   const toast = useToast()
 
@@ -57,9 +59,19 @@ export default function WordbookPage() {
     }
     return dueWords.filter((word) => !reviewedIds.includes(word.id))
   }, [sessionIds, words, dueWords, reviewedIds])
-  const currentWord = reviewQueue[0]
+  const focusWord = focusWordId
+    ? words.find((word) => word.id === focusWordId) ?? null
+    : null
+  const currentWord = focusWord ?? reviewQueue[0]
   const reviewedCount = reviewedIds.length
   const totalDue = sessionIds ? sessionIds.length : reviewedCount + dueWords.length
+
+  const openWordReview = (id: string) => {
+    setFocusWordId(id)
+    setRevealed(false)
+    setSessionIds(null)
+    setTab('review')
+  }
 
   const startFreeReview = () => {
     if (words.length === 0) {
@@ -74,6 +86,7 @@ export default function WordbookPage() {
     setSessionIds(ids)
     setReviewedIds([])
     setRevealed(false)
+    setFocusWordId(null)
     setTab('review')
     toast(`已随机生成 ${ids.length} 个单词的复习序列。`, 'success')
   }
@@ -93,6 +106,7 @@ export default function WordbookPage() {
     reviewWord(currentWord.id, remembered)
     setReviewedIds((prev) => [...prev, currentWord.id])
     setRevealed(false)
+    setFocusWordId(null)
     toast(
       remembered
         ? `“${currentWord.spelling}”已记住，复习间隔延长。`
@@ -168,7 +182,10 @@ export default function WordbookPage() {
             <button
               key={item.id}
               type="button"
-              onClick={() => setTab(item.id)}
+              onClick={() => {
+                setTab(item.id)
+                setFocusWordId(null)
+              }}
               className={`inline-flex items-center gap-1.5 rounded-md px-3.5 py-2 text-xs font-medium transition-colors ${
                 tab === item.id
                   ? 'bg-slate-100 text-slate-900'
@@ -200,6 +217,7 @@ export default function WordbookPage() {
           {connected
             ? '已连接 FastAPI · 复习记录实时落库'
             : '本地模式 · 启动后端后自动同步'}
+          {tab === 'all' ? ' · 点击单词进入复习' : ''}
         </p>
       </div>
 
@@ -221,7 +239,17 @@ export default function WordbookPage() {
               return (
                 <div
                   key={word.id}
-                  className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-3 border-b border-slate-100 px-5 py-4 last:border-b-0 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_140px_110px_36px] lg:items-center"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => openWordReview(word.id)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault()
+                      openWordReview(word.id)
+                    }
+                  }}
+                  aria-label={`复习 ${word.spelling}`}
+                  className="grid cursor-pointer grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-3 border-b border-slate-100 px-5 py-4 transition-colors last:border-b-0 hover:bg-slate-50/80 focus-visible:bg-slate-50 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_140px_110px_36px] lg:items-center"
                 >
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
@@ -275,10 +303,12 @@ export default function WordbookPage() {
                   <div className="col-start-2 row-start-1 flex justify-end lg:col-start-5">
                     <button
                       type="button"
-                      onClick={() => {
+                      onClick={(event) => {
+                        event.stopPropagation()
                         removeWord(word.id)
                         toast(`已从单词本移除“${word.spelling}”。`, 'info')
                       }}
+                      onKeyDown={(event) => event.stopPropagation()}
                       aria-label={`删除 ${word.spelling}`}
                       title="从单词本移除"
                       className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-300 transition-colors hover:bg-red-50 hover:text-red-500"
@@ -315,23 +345,44 @@ export default function WordbookPage() {
           <div>
             {currentWord ? (
               <>
-                <div className="mb-3 flex items-center justify-between">
-                  <div>
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
                     <p className="text-sm font-semibold text-slate-900">
-                      {sessionIds ? '随机复习 · 全部单词' : '今日复习'}
+                      {focusWord
+                        ? '单词复习 · 指定单词'
+                        : sessionIds
+                          ? '随机复习 · 全部单词'
+                          : '今日复习'}
                     </p>
+                    {focusWord ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFocusWordId(null)
+                          setRevealed(false)
+                        }}
+                        className="inline-flex items-center gap-1 rounded-md border border-slate-200 px-2 py-1 text-[10px] font-medium text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-800"
+                      >
+                        <ArrowLeft className="h-3 w-3" />
+                        返回今日队列
+                      </button>
+                    ) : null}
                   </div>
                   <span className="text-[11px] font-medium text-slate-500 tabular-nums">
-                    {reviewedCount + 1} / {totalDue || 1}
+                    {focusWord
+                      ? '单词卡'
+                      : `${reviewedCount + 1} / ${totalDue || 1}`}
                   </span>
                 </div>
-                <ProgressBar
-                  value={
-                    totalDue > 0 ? (reviewedCount / totalDue) * 100 : 0
-                  }
-                  tone="amber"
-                  className="mb-4"
-                />
+                {focusWord ? null : (
+                  <ProgressBar
+                    value={
+                      totalDue > 0 ? (reviewedCount / totalDue) * 100 : 0
+                    }
+                    tone="amber"
+                    className="mb-4"
+                  />
+                )}
 
                 <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
                   <div className="flex flex-wrap items-center gap-2">
@@ -380,6 +431,7 @@ export default function WordbookPage() {
                       type="button"
                       onClick={() => handleReview(false)}
                       disabled={!revealed}
+                      title={revealed ? undefined : '先显示释义，再自评'}
                       className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600 transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-700 disabled:opacity-40"
                     >
                       <EyeOff className="h-3.5 w-3.5" />
@@ -389,12 +441,19 @@ export default function WordbookPage() {
                       type="button"
                       onClick={() => handleReview(true)}
                       disabled={!revealed}
+                      title={revealed ? undefined : '先显示释义，再自评'}
                       className="inline-flex items-center justify-center gap-2 rounded-lg bg-slate-800 px-4 py-3 text-xs font-semibold text-white transition-colors hover:bg-slate-900 disabled:bg-slate-200 disabled:text-slate-400"
                     >
                       <CheckCircle2 className="h-3.5 w-3.5" />
                       记住了 · 延长间隔
                     </button>
                   </div>
+
+                  {!revealed ? (
+                    <p className="mt-3 text-center text-[11px] leading-relaxed text-slate-400">
+                      先点「显示释义」再自评：「没记住」排到明天，「记住了」按间隔顺延。
+                    </p>
+                  ) : null}
                 </div>
               </>
             ) : (
@@ -431,47 +490,90 @@ export default function WordbookPage() {
                 <h3 className="text-sm font-semibold text-slate-900">
                   艾宾浩斯节奏
                 </h3>
+                <span className="ml-auto rounded-md bg-slate-100 px-1.5 py-0.5 text-[9px] font-medium text-slate-400">
+                  示意
+                </span>
               </div>
               <div className="mt-4 grid grid-cols-3 gap-1.5">
-                {REVIEW_INTERVALS.map((day) => (
-                  <span
-                    key={day}
-                    className="rounded-lg bg-slate-50 px-2 py-1.5 text-center text-[10px] font-medium text-slate-500 ring-1 ring-slate-100"
-                  >
-                    +{day} 天
-                  </span>
-                ))}
+                {REVIEW_INTERVALS.map((day, index) => {
+                  const isCurrent =
+                    currentWord != null &&
+                    Math.min(
+                      currentWord.reviewCount,
+                      REVIEW_INTERVALS.length - 1,
+                    ) === index
+                  return (
+                    <span
+                      key={day}
+                      className={`rounded-md px-2 py-1.5 text-center text-[10px] font-medium ${
+                        isCurrent
+                          ? 'bg-amber-100 text-amber-800'
+                          : 'bg-slate-50 text-slate-400'
+                      }`}
+                    >
+                      +{day} 天
+                    </span>
+                  )
+                })}
               </div>
               <div className="mt-4 border-t border-slate-100 pt-3">
                 <p className="text-[10px] leading-relaxed text-slate-400">
-                  当前队列。先复习拖得最久的词，避免间隔失真。
+                  复习间隔随「记住了」逐次加倍、30 天封顶；高亮的是当前单词所处的档位。
                 </p>
               </div>
             </div>
 
-            <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-              <h3 className="text-sm font-semibold text-slate-900">本次进度</h3>
-              <div className="mt-4 space-y-3">
-                <div className="flex items-center justify-between text-[11px]">
-                  <span className="text-slate-400">已完成</span>
-                  <span className="font-semibold text-slate-700">
-                    {reviewedCount}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-[11px]">
-                  <span className="text-slate-400">剩余</span>
-                  <span className="font-semibold text-slate-700">
-                    {reviewQueue.length}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-[11px]">
-                  <span className="text-slate-400">平均掌握度</span>
-                  <span className="font-semibold text-slate-700">
-                    {Math.round(averageFamiliarity * 100)}%
-                  </span>
+            {focusWord ? (
+              <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                <h3 className="text-sm font-semibold text-slate-900">
+                  当前单词
+                </h3>
+                <div className="mt-4 space-y-3">
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="text-slate-400">已复习</span>
+                    <span className="font-semibold text-slate-700">
+                      {focusWord.reviewCount} 次
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="text-slate-400">掌握度</span>
+                    <span className="font-semibold text-slate-700">
+                      {Math.round(focusWord.familiarity * 100)}%
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="text-slate-400">下次复习</span>
+                    <span className="font-semibold text-slate-700">
+                      {formatDate(focusWord.nextReview)}
+                    </span>
+                  </div>
                 </div>
               </div>
-            </div>
+            ) : (
+              <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                <h3 className="text-sm font-semibold text-slate-900">本次进度</h3>
+                <div className="mt-4 space-y-3">
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="text-slate-400">已完成</span>
+                    <span className="font-semibold text-slate-700">
+                      {reviewedCount}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="text-slate-400">剩余</span>
+                    <span className="font-semibold text-slate-700">
+                      {reviewQueue.length}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="text-slate-400">平均掌握度</span>
+                    <span className="font-semibold text-slate-700">
+                      {Math.round(averageFamiliarity * 100)}%
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
           </aside>
         </div>
       ) : null}

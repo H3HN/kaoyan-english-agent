@@ -46,6 +46,9 @@ web/dist/
 .idea/
 .vscode/
 
+# Local verification screenshots and probes
+_shots/
+
 # Local Streamlit state
 kaoyan_agent/data/
 

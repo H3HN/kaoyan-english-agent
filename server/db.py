@@ -30,7 +30,8 @@ CREATE TABLE IF NOT EXISTS exam_passages (
     reviewed_by TEXT NOT NULL DEFAULT '',
     reviewed_at TEXT NOT NULL DEFAULT '',
     published_at TEXT NOT NULL DEFAULT '',
-    source_note TEXT NOT NULL DEFAULT ''
+    source_note TEXT NOT NULL DEFAULT '',
+    UNIQUE(year, exam_type, text_number)
 );
 
 CREATE TABLE IF NOT EXISTS exam_sentences (
@@ -144,6 +145,125 @@ def connect() -> sqlite3.Connection:
     return conn
 
 
+def _table_exists(conn: sqlite3.Connection, name: str) -> bool:
+    return conn.execute(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", (name,)
+    ).fetchone() is not None
+
+
+def _passage_practice_count(conn: sqlite3.Connection, passage_id: str) -> int:
+    if not _table_exists(conn, "practice_records"):
+        return 0
+    return conn.execute(
+        """
+        SELECT COUNT(*)
+        FROM practice_records AS pr
+        JOIN exam_questions AS q ON q.id = pr.question_id
+        WHERE q.passage_id = ?
+        """,
+        (passage_id,),
+    ).fetchone()[0]
+
+
+def _delete_passage_tree(conn: sqlite3.Connection, passage_id: str) -> None:
+    conn.execute(
+        "DELETE FROM sentence_breakdowns WHERE sentence_id IN "
+        "(SELECT id FROM exam_sentences WHERE passage_id = ?)",
+        (passage_id,),
+    )
+    conn.execute("DELETE FROM exam_questions WHERE passage_id = ?", (passage_id,))
+    conn.execute("DELETE FROM exam_sentences WHERE passage_id = ?", (passage_id,))
+    if _table_exists(conn, "bank_events"):
+        conn.execute("DELETE FROM bank_events WHERE passage_id = ?", (passage_id,))
+    conn.execute("DELETE FROM exam_passages WHERE id = ?", (passage_id,))
+
+
+def delete_draft_passage(conn: sqlite3.Connection, passage_id: str) -> bool:
+    """Delete one draft passage and its children if it has no practice history."""
+    row = conn.execute(
+        "SELECT publication_status FROM exam_passages WHERE id = ?", (passage_id,)
+    ).fetchone()
+    if row is None:
+        return False
+    if row["publication_status"] != "draft":
+        raise RuntimeError(f"refusing to delete non-draft passage {passage_id}")
+    if _passage_practice_count(conn, passage_id):
+        raise RuntimeError(
+            f"cannot remove draft passage {passage_id}: "
+            "practice records reference its questions"
+        )
+    _delete_passage_tree(conn, passage_id)
+    return True
+
+
+def delete_draft_slot(
+    conn: sqlite3.Connection, year: int, exam_type: str, text_number: int
+) -> list[str]:
+    """Remove unreferenced draft passages occupying one exam slot.
+
+    This is used by the migration and by snapshot restore. A draft with
+    practice records is never removed; the caller must fail loudly instead of
+    silently destroying learning history.
+    """
+    rows = conn.execute(
+        "SELECT id FROM exam_passages "
+        "WHERE year = ? AND exam_type = ? AND text_number = ? "
+        "AND publication_status = 'draft'",
+        (year, exam_type, text_number),
+    ).fetchall()
+    removed: list[str] = []
+    for row in rows:
+        passage_id = row["id"]
+        delete_draft_passage(conn, passage_id)
+        removed.append(passage_id)
+    return removed
+
+
+def _ensure_unique_passage_slot(conn: sqlite3.Connection) -> None:
+    """Clean legacy duplicate draft passages and enforce one row per slot."""
+    duplicates = conn.execute(
+        """
+        SELECT year, exam_type, text_number, COUNT(*) AS c
+        FROM exam_passages
+        GROUP BY year, exam_type, text_number
+        HAVING c > 1
+        """
+    ).fetchall()
+    for row in duplicates:
+        removed = delete_draft_slot(
+            conn, row["year"], row["exam_type"], row["text_number"]
+        )
+        if not removed:
+            raise RuntimeError(
+                "duplicate exam passage slot without a removable draft: "
+                f"{row['year']}/{row['exam_type']}/{row['text_number']}"
+            )
+    remaining = conn.execute(
+        """
+        SELECT year, exam_type, text_number, COUNT(*) AS c
+        FROM exam_passages
+        GROUP BY year, exam_type, text_number
+        HAVING c > 1
+        """
+    ).fetchall()
+    if remaining:
+        details = ", ".join(
+            f"{row['year']}/{row['exam_type']}/{row['text_number']}"
+            for row in remaining
+        )
+        raise RuntimeError(f"duplicate exam passage slots cannot be cleaned: {details}")
+    try:
+        conn.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS ux_exam_passages_slot "
+            "ON exam_passages(year, exam_type, text_number)"
+        )
+    except sqlite3.IntegrityError as exc:
+        raise RuntimeError(
+            "failed to create ux_exam_passages_slot; resolve duplicate "
+            "exam passages before migrating"
+        ) from exc
+
+
 def migrate_schema(conn: sqlite3.Connection) -> None:
     """Add import provenance without reclassifying or rewriting legacy data.
 
@@ -179,6 +299,7 @@ def migrate_schema(conn: sqlite3.Connection) -> None:
         for name, definition in columns.items():
             if name not in existing:
                 conn.execute(f"ALTER TABLE {table} ADD COLUMN {name} {definition}")
+    _ensure_unique_passage_slot(conn)
 
 
 def init_db() -> None:

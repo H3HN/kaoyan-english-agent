@@ -90,7 +90,11 @@ def _log_run(
     input_payload: dict[str, Any],
     output_payload: dict[str, Any],
     tool_trace: list[dict[str, Any]],
+    source: str = "direct",
 ) -> None:
+    """Append one agent_runs row; ``source`` distinguishes direct requests
+    (direct) from calls forwarded by the chat workflow (chat) so audit trails
+    are not misattributed."""
     conn.execute(
         """
         INSERT INTO agent_runs (workflow, input_json, output_json, tool_trace_json)
@@ -98,7 +102,7 @@ def _log_run(
         """,
         (
             workflow,
-            json.dumps(input_payload, ensure_ascii=False),
+            json.dumps({"source": source, **input_payload}, ensure_ascii=False),
             json.dumps(output_payload, ensure_ascii=False),
             json.dumps(tool_trace, ensure_ascii=False),
         ),
@@ -120,7 +124,7 @@ def _top_vocab(entries: list[dict[str, Any]], limit: int = 12) -> list[dict[str,
 
 
 def run_sentence_workflow(
-    conn: sqlite3.Connection, sentence_id: str
+    conn: sqlite3.Connection, sentence_id: str, *, log_source: str = "direct"
 ) -> dict[str, Any] | None:
     sentence = get_sentence(conn, sentence_id)
     if not sentence:
@@ -167,6 +171,7 @@ def run_sentence_workflow(
             "citation_count": len(citations),
         },
         result["tool_trace"],
+        source=log_source,
     )
     return result
 
@@ -175,6 +180,8 @@ def run_options_workflow(
     conn: sqlite3.Connection,
     question_id: str,
     user_answer: str | None = None,
+    *,
+    log_source: str = "direct",
 ) -> dict[str, Any] | None:
     question = get_question(conn, question_id)
     if not question:
@@ -215,6 +222,7 @@ def run_options_workflow(
             "selected_trap": result["selected_trap"],
         },
         result["tool_trace"],
+        source=log_source,
     )
     return result
 
@@ -302,7 +310,7 @@ def _run_chat_deterministic(
         sentence_id = max(
             context_sentences, key=lambda row: len(row["text"])
         )["id"]
-        result = run_sentence_workflow(conn, sentence_id)
+        result = run_sentence_workflow(conn, sentence_id, log_source="chat")
         assert result
         breakdown = _get_sentence_breakdown(
             conn, sentence_id, result["sentence"]["text"]
@@ -395,7 +403,7 @@ def _run_chat_deterministic(
                 "llm_policy": "deterministic",
             }
         question_id = context_questions[0]["id"]
-        result = run_options_workflow(conn, question_id, None)
+        result = run_options_workflow(conn, question_id, None, log_source="chat")
         assert result
         option_location = (
             result["source_sentence"]["source"]
@@ -656,6 +664,26 @@ def run_chat_workflow(
     rewrites the teaching prose, so a failed or hallucinated model call cannot
     break provenance or software state.
     """
+    base = _chat_pipeline(conn, message, context_id)
+    _log_run(
+        conn,
+        "chat",
+        {"message": message[:200], "context_id": context_id},
+        {
+            "llm_used": base.get("llm_used"),
+            "section_count": len(base.get("sections", [])),
+            "tools": [item.get("tool") for item in base.get("tool_trace", [])],
+            "citation_count": len(base.get("citations", [])),
+        },
+        base.get("tool_trace", []),
+        source="direct",
+    )
+    return base
+
+
+def _chat_pipeline(
+    conn: sqlite3.Connection, message: str, context_id: str = ""
+) -> dict[str, Any]:
     base = _run_chat_deterministic(conn, message, context_id)
     if base.get("llm_policy") == "deterministic":
         base["llm_used"] = False

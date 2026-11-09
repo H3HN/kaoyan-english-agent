@@ -82,6 +82,7 @@ export default function OptionsPage() {
   const [activeQuestionId, setActiveQuestionId] = useState('')
   const [loadError, setLoadError] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [passageLoading, setPassageLoading] = useState(false)
   const [attempts, setAttempts] = useState<Record<string, Attempt>>({})
   const [selected, setSelected] = useState<OptionKey | null>(null)
   const [showAnalysis, setShowAnalysis] = useState(false)
@@ -90,6 +91,7 @@ export default function OptionsPage() {
   const [searchParams] = useSearchParams()
   const highlightRef = useRef<HTMLSpanElement>(null)
   const activeQuestionRef = useRef<string | undefined>(undefined)
+  const fetchedPassageKeys = useRef<Set<string>>(new Set())
   const { addRecord } = useAppStore()
 
   useEffect(() => {
@@ -98,8 +100,10 @@ export default function OptionsPage() {
     setLoadError(false)
     setAllQuestions([])
     setActiveQuestionId('')
+    fetchedPassageKeys.current = new Set()
+    // First pass: catalog metadata only (no passage bodies repeated per question).
     api
-      .getQuestionsFull()
+      .getQuestionsFull({ includePassage: false })
       .then((response) => {
         if (!alive) return
         setAllQuestions(response.items)
@@ -242,6 +246,43 @@ export default function OptionsPage() {
       block: 'center',
     })
   }, [showAnalysis, activeQuestion?.id])
+
+  // Second pass: fetch the selected passage's full questions (with passage
+  // text) on demand; each group is fetched at most once per catalog load.
+  useEffect(() => {
+    if (!currentGroup) return
+    const key = `${currentGroup.year}|${currentGroup.examType}|${currentGroup.textNumber}`
+    if (fetchedPassageKeys.current.has(key)) return
+    if (currentGroup.passage) return
+    fetchedPassageKeys.current.add(key)
+    let alive = true
+    setPassageLoading(true)
+    api
+      .getQuestionsFull({
+        year: currentGroup.year,
+        examType: currentGroup.examType,
+        textNumber: currentGroup.textNumber,
+      })
+      .then((response) => {
+        if (!alive || !response.items.length) return
+        const detailedIds = new Set(response.items.map((item) => item.id))
+        setAllQuestions((prev) => [
+          ...prev.filter((item) => !detailedIds.has(item.id)),
+          ...response.items,
+        ])
+      })
+      .catch(() => {
+        // Catalog metadata still renders; the passage pane shows its own hint.
+        fetchedPassageKeys.current.delete(key)
+      })
+      .finally(() => {
+        if (alive) setPassageLoading(false)
+      })
+    return () => {
+      alive = false
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentGroup?.year, currentGroup?.examType, currentGroup?.textNumber, currentGroup?.passage])
 
   const paragraphs = useMemo(
     () => buildParagraphs(currentGroup?.passage ?? ''),
@@ -420,6 +461,17 @@ export default function OptionsPage() {
           </div>
 
           <div className="mt-5 space-y-5">
+            {passageLoading && (
+              <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500">
+                <Loader2 className="h-3.5 w-3.5 animate-spin text-slate-400" />
+                正在加载原文…
+              </div>
+            )}
+            {!passageLoading && !currentGroup.passage && (
+              <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500">
+                原文暂时不可用，可稍后重试。
+              </div>
+            )}
             {paragraphs.map((paragraph, paragraphIndex) => (
               <div key={`${paragraphIndex}-${paragraph.slice(0, 20)}`}>
                 <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">

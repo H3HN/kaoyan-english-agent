@@ -3,19 +3,13 @@
 Run from server: python -m unittest discover -s tests -p 'test_*.py' -v
 """
 import copy
-import sqlite3
 import sys
 import unittest
 from pathlib import Path
-from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from fastapi import HTTPException
-from fastapi.testclient import TestClient
-import app as api
-import db
 from exam_import import (ImportValidationError, expected_numbers, locate_quote,
-                         normalize_passage, parse_answer_key, split_passage,
+                         normalize_passage, parse_answer_key, slice_text, split_passage,
                          validate_extraction)
 
 PASSAGE = (
@@ -154,121 +148,14 @@ class TextLocationTests(unittest.TestCase):
         self.assertEqual(result["location_status"], "ambiguous")
         self.assertIsNone(result["source_sentence_id"])
 
+    def test_slice_text_extracts_text_block(self):
+        raw = ("Directions: Read the following texts.\n"
+               "Text 1 First passage body sentence here.\n"
+               "Text 2 Second passage body follows.\n"
+               "Part B Translation.")
+        self.assertIn("First passage body", slice_text(raw, 1))
+        self.assertNotIn("First passage body", slice_text(raw, 2))
+        self.assertIn("Second passage body", slice_text(raw, 2))
+        # No Text marker: return the whole dump unchanged (caller validates).
+        self.assertEqual(slice_text("just raw text", 1), "just raw text")
 
-class EndpointTests(unittest.TestCase):
-    def setUp(self):
-        self.conn = sqlite3.connect(":memory:", check_same_thread=False)
-        self.conn.row_factory = sqlite3.Row
-        self.conn.executescript(db.SCHEMA)
-        self.addCleanup(self.conn.close)
-        self.raw = extraction()
-        for name, value in (("llm_status", {"llm_configured": True}),
-                            ("extract_exam_text", self.raw), ("analyze_imported_questions_batch", None),
-                            ("analyze_imported_question", None)):
-            mock = patch.object(api, name, return_value=value).start()
-            setattr(self, name, mock)
-        self.addCleanup(patch.stopall)
-        self.payload = api.AutoImportRequest(year=2024, exam_type="英语一", text_number=1,
-                                              text="raw exam text", answer_key="ABCDA")
-
-    def counts(self):
-        return tuple(self.conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
-                     for table in ("exam_passages", "exam_sentences", "exam_questions"))
-
-    def test_success_persists_original_numbers_paragraphs_provenance(self):
-        self.raw["questions"].reverse()
-        response = api.auto_import_exam(self.payload, self.conn)
-        self.assertEqual(self.counts(), (1, 6, 5))
-        self.assertEqual([q["number"] for q in response["questions"]], list(range(21, 26)))
-        self.assertEqual("".join(q["correctAnswer"] for q in response["questions"]), "ABCDA")
-        self.assertEqual(response["questions"][0]["answerSource"], "provided")
-        self.assertEqual(response["questions"][0]["reviewStatus"], "pending")
-        self.assertIn("第2段第1句", response["questions"][0]["location"])
-        self.assertFalse(self.conn.in_transaction)
-
-    def test_missing_option_leaves_all_tables_empty(self):
-        del self.raw["questions"][1]["options"]["D"]
-        with self.assertRaises(HTTPException) as error:
-            api.auto_import_exam(self.payload, self.conn)
-        self.assertEqual(error.exception.status_code, 422)
-        self.assertEqual(self.counts(), (0, 0, 0))
-        self.analyze_imported_questions_batch.assert_not_called()
-
-    def test_invalid_answer_rejected_before_model(self):
-        self.payload.answer_key = "ABCD"
-        with self.assertRaises(HTTPException):
-            api.auto_import_exam(self.payload, self.conn)
-        self.extract_exam_text.assert_not_called()
-        self.assertEqual(self.counts(), (0, 0, 0))
-
-    def test_duplicate_is_409_before_calling_model_again(self):
-        api.auto_import_exam(self.payload, self.conn)
-        self.extract_exam_text.reset_mock()
-        with self.assertRaises(HTTPException) as error:
-            api.auto_import_exam(self.payload, self.conn)
-        self.assertEqual(error.exception.status_code, 409)
-        self.assertEqual(self.counts(), (1, 6, 5))
-        self.extract_exam_text.assert_not_called()
-
-    def test_sql_failure_rolls_back_passage_sentences_and_questions(self):
-        self.conn.executescript("CREATE TRIGGER fail_question BEFORE INSERT ON exam_questions "
-                                "WHEN NEW.number=23 BEGIN SELECT RAISE(ABORT, 'test failure'); END;")
-        with self.assertRaises(sqlite3.IntegrityError):
-            api.auto_import_exam(self.payload, self.conn)
-        self.assertEqual(self.counts(), (0, 0, 0))
-        self.assertFalse(self.conn.in_transaction)
-
-    def test_model_calls_do_not_hold_write_transaction(self):
-        def batch(*args):
-            self.assertFalse(self.conn.in_transaction)
-        self.analyze_imported_questions_batch.side_effect = batch
-        api.auto_import_exam(self.payload, self.conn)
-
-    def test_inferred_answer_and_pending_location_survive_reload(self):
-        self.payload.answer_key = ""
-        for q in self.raw["questions"]:
-            q["source_quote"] = "An invented sentence not found here."
-        result = api.auto_import_exam(self.payload, self.conn)
-        result = api._full_question(self.conn, result["question_ids"][0])
-        self.assertEqual(result["answerSource"], "inferred")
-        self.assertEqual(result["location"], "待人工定位")
-        self.assertEqual(result["sourceSentence"], "")
-        self.assertIsNone(result["sourceSentenceId"])
-        self.assertEqual(result["sourceQuote"], "An invented sentence not found here.")
-
-    def test_manual_import_has_no_longest_sentence_fallback(self):
-        payload = api.ExamImportRequest(year=2024, exam_type="英语一", passage=PASSAGE,
-                                        content="What is the policy?", options={k: k for k in "ABCD"},
-                                        correct_answer="A")
-        response = api.import_exam(payload, self.conn)
-        self.assertEqual(response["question"]["answerSource"], "manual")
-        self.assertIsNone(response["question"]["sourceSentenceId"])
-        with self.assertRaises(HTTPException) as error:
-            api.import_exam(payload, self.conn)
-        self.assertEqual(error.exception.status_code, 409)
-        self.assertEqual(self.counts(), (1, 6, 1))
-
-    def test_http_validation_and_error_contract_without_startup_db(self):
-        def override():
-            yield self.conn
-        api.app.dependency_overrides[api.get_db] = override
-        self.addCleanup(api.app.dependency_overrides.clear)
-        # Deliberately no client context: lifespan must not initialize the real DB.
-        client = TestClient(api.app)
-        self.addCleanup(client.close)
-        data = self.payload.model_dump()
-        data["text_number"] = 5
-        # Student HTTP ingestion was retired; validation remains in internal helpers.
-        self.assertEqual(client.post("/api/exams/auto-import", json=data).status_code, 410)
-        with self.assertRaises(ValueError):
-            api.AutoImportRequest(**data)
-        data["text_number"] = 1
-        data["answer_key"] = "ABCD"
-        with self.assertRaises(HTTPException) as error:
-            api.auto_import_exam(api.AutoImportRequest(**data), self.conn)
-        self.assertEqual(error.exception.status_code, 422)
-        self.assertEqual(error.exception.detail["code"], "invalid_exam")
-
-
-if __name__ == "__main__":
-    unittest.main()

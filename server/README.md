@@ -31,6 +31,16 @@ cd server
 
 完整步骤见 [题库建库与发布操作说明](../docs/题库建库与发布操作说明.md)。旧库及快照恢复内容默认草稿，需要重新核对后发布；快照导出包含 auto_/bank_/custom_，不含审核历史 bank_events。
 
+## 原文证据定位（当前）
+
+`python scripts/locate_evidence.py --actor "操作人" [--dry-run] [--passages <id>...]` 对导入题目批量重算 `source_sentence_id` / `location_status`：引文唯一且落单句才绑定（exact_quote），跨句/缺失/差异分别标记 multi_sentence / pending，绝不伪绑定；不改动发布与审核状态，每篇记 `bank_events` 审计，幂等可重跑。随附快照已含定位结果（141/340 题已绑定），旧环境安装的队友跑一遍即可对齐。详见[黄炜杰-原文证据定位说明](../docs/黄炜杰-原文证据定位说明.md)。
+
+## 性能与可观测性（2026-11-03 优化）
+
+- `GET /api/questions/full` 固定 3 个批量查询（不再逐题 N+1），支持 `year` / `exam_type` / `text_number` / `include_passage` 查询参数；默认行为与旧版逐字段兼容。前端阅读训练页为两段式加载（初次轻量目录 + 按篇拉原文）。
+- chat 工作流已写 `agent_runs`（workflow=chat）；`input_json` 顶层 `source` 字段区分 `direct`（用户直接请求）与 `chat`（chat 内部转发），审计不再错误归因。
+- 410 僵尸路由死实现已清理（app.py 761→537 行，含潜伏 SSRF 的 `_download_pdf_text`）；三个 410 契约保留。`slice_text` 迁至 `exam_import.py`，团队 CLI 不再依赖 Web app 模块。详见[黄炜杰-后端优化说明](../docs/黄炜杰-后端优化说明.md)。
+
 以下自动导入描述保留为历史记录，不能作为当前执行步骤。
 
 ## 真题自动导入（历史，已停用）

@@ -591,6 +591,33 @@ def get_report(conn: sqlite3.Connection) -> dict[str, Any]:
             f"当前累计 {total} 题，样本还不够大；建议累计 30 题以上再做稳定薄弱分析。"
         )
 
+    today = datetime.now().date()
+    day_counts: dict[str, int] = {}
+    for row in records:
+        created = (row["created_at"] or "")[:10]
+        if created:
+            day_counts[created] = day_counts.get(created, 0) + 1
+    daily_counts = [
+        {
+            "date": (today - timedelta(days=offset)).isoformat(),
+            "count": day_counts.get(
+                (today - timedelta(days=offset)).isoformat(), 0
+            ),
+        }
+        for offset in range(6, -1, -1)
+    ]
+    recent_records = [
+        {
+            "question_id": row["question_id"],
+            "question_type": row["question_type"],
+            "user_answer": row["user_answer"],
+            "correct_answer": row["correct_answer"],
+            "is_correct": bool(row["is_correct"]),
+            "created_at": row["created_at"],
+        }
+        for row in records[:20]
+    ]
+
     return {
         "total": total,
         "correct": correct,
@@ -600,6 +627,8 @@ def get_report(conn: sqlite3.Connection) -> dict[str, Any]:
         "weak_types": weak_types,
         "due_words": due_words,
         "suggestions": suggestions,
+        "daily_counts": daily_counts,
+        "recent_records": recent_records,
     }
 
 

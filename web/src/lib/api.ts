@@ -245,6 +245,46 @@ export interface AppState {
   records: StudyRecord[]
 }
 
+export interface ReportTypeStat {
+  total: number
+  correct: number
+  accuracy: number
+}
+
+export interface ReportWeakType {
+  type: string
+  total: number
+  correct: number
+  accuracy: number
+}
+
+export interface ReportDailyCount {
+  date: string
+  count: number
+}
+
+export interface ReportRecentRecord {
+  question_id: string
+  question_type: string
+  user_answer: string
+  correct_answer: string
+  is_correct: boolean
+  created_at: string
+}
+
+export interface ReportResponse {
+  total: number
+  correct: number
+  accuracy: number
+  by_type: Record<string, ReportTypeStat>
+  weak_types: ReportWeakType[]
+  trap_distribution: Record<string, number>
+  due_words: Word[]
+  suggestions: string[]
+  daily_counts: ReportDailyCount[]
+  recent_records: ReportRecentRecord[]
+}
+
 export interface RareWord {
   word: string
   basic_meaning: string
@@ -292,7 +332,20 @@ export const api = {
   getMeta: () => request<MetaInfo>('/meta'),
   getState: () => request<AppState>('/state'),
   getKnowledge: () => request<KnowledgeResponse>('/knowledge'),
-  getQuestionsFull: () => request<{ items: FullQuestion[] }>('/questions/full'),
+  getQuestionsFull: (params?: {
+    year?: number
+    examType?: string
+    textNumber?: number
+    includePassage?: boolean
+  }) => {
+    const search = new URLSearchParams()
+    if (params?.year) search.set('year', String(params.year))
+    if (params?.examType) search.set('exam_type', params.examType)
+    if (params?.textNumber) search.set('text_number', String(params.textNumber))
+    if (params?.includePassage === false) search.set('include_passage', 'false')
+    const qs = search.toString()
+    return request<{ items: FullQuestion[] }>(`/questions/full${qs ? `?${qs}` : ''}`)
+  },
   getPassages: () => request<{ items: PassageSummary[] }>('/passages'),
   browseVocab: (params: {
     q?: string
@@ -393,5 +446,5 @@ export const api = {
       }),
     }),
 
-  getReport: () => request<Record<string, unknown>>('/report'),
+  getReport: () => request<ReportResponse>('/report'),
 }

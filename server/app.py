@@ -1,28 +1,21 @@
-import io
 import json
+import os
 import re
 import sqlite3
 import uuid
 from contextlib import asynccontextmanager
-from datetime import datetime
 from typing import Annotated, Any
 
-import httpx
-from fastapi import Depends, FastAPI, HTTPException, Query
-from pypdf import PdfReader
+from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from db import connect, init_db
-from exam_import import (
-    ImportValidationError, LETTERS, QUESTION_TYPES, expected_numbers,
-    locate_quote, normalize_passage, parse_answer_key, split_passage, validate_extraction,
-)
+from exam_import import LETTERS
 from llm import (
-    analyze_imported_question,
-    analyze_imported_questions_batch,
     analyze_sentence_breakdown,
-    extract_exam_text,
     status as llm_status,
 )
 from tools import (
@@ -32,7 +25,6 @@ from tools import (
     get_question,
     get_rare_words,
     get_report,
-    get_sentence,
     get_state,
     get_trap_rules,
     list_questions,
@@ -60,13 +52,52 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+
+def _cors_origins() -> list[str]:
+    raw = os.getenv(
+        "CORS_ORIGINS", "http://127.0.0.1:5173,http://localhost:5173"
+    ).strip()
+    return [item.strip() for item in raw.split(",") if item.strip()]
+
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_cors_origins(),
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def add_request_id(request: Request, call_next):
+    request_id = request.headers.get("X-Request-ID") or uuid.uuid4().hex[:12]
+    request.state.request_id = request_id
+    response = await call_next(request)
+    response.headers["X-Request-ID"] = request_id
+    return response
+
+
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(request: Request, exc: StarletteHTTPException):
+    request_id = getattr(request.state, "request_id", "")
+    # Keep the retired import routes' 410 contract unchanged.
+    if exc.status_code == 410:
+        return JSONResponse(
+            status_code=410,
+            content={"detail": exc.detail},
+            headers=exc.headers,
+        )
+    detail = exc.detail
+    if isinstance(detail, dict):
+        detail = {**detail, "request_id": request_id}
+    else:
+        detail = {"message": detail, "request_id": request_id}
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": detail},
+        headers=exc.headers,
+    )
 
 
 def get_db():
@@ -122,26 +153,6 @@ class VocabCheckRequest(BaseModel):
     text: str | None = None
     words: list[str] | None = None
 
-
-class AutoImportRequest(BaseModel):
-    url: str | None = Field(default=None, max_length=2000)
-    text: str | None = Field(default=None, max_length=50000)
-    year: int = Field(ge=2000, le=2100)
-    exam_type: str = Field(pattern=r"^英语[一二]$")
-    text_number: int = Field(default=1, ge=1, le=4)
-    answer_key: str = Field(default="", max_length=200)
-    answer_source_note: str = Field(default="", max_length=500)
-
-
-class ExamImportRequest(BaseModel):
-    year: int = Field(ge=2000, le=2100)
-    exam_type: str = Field(pattern=r"^英语[一二]$")
-    text_number: int = Field(default=1, ge=1, le=20)
-    passage: str = Field(min_length=50, max_length=20000)
-    question_type: str = Field(default="细节题", max_length=20)
-    content: str = Field(min_length=5, max_length=2000)
-    options: dict[str, str]
-    correct_answer: str = Field(pattern=r"^[ABCD]$")
 
 
 @app.get("/")
@@ -399,296 +410,123 @@ def report(conn: DB):
     return get_report(conn)
 
 
-def _full_question(conn: sqlite3.Connection, question_id: str, *, include_drafts=True):
-    question = get_question(conn, question_id, include_drafts=include_drafts)
-    if not question:
-        return None
-    source = (
-        get_sentence(conn, question["source_sentence_id"], include_drafts=include_drafts)
-        if question.get("source_sentence_id")
-        else None
-    )
-    passage_row = conn.execute(
-        "SELECT text FROM exam_passages WHERE id = ?",
-        (question["passage_id"],),
-    ).fetchone()
+def _assemble_full_question(
+    question_row: sqlite3.Row,
+    sentence_rows: dict[str, sqlite3.Row],
+    passage_text: str,
+) -> dict[str, Any]:
+    """Assemble one /api/questions/full item from prefetched rows.
+
+    Field contract matches the previous per-question implementation exactly,
+    including the exact_quote-only display rule for the source sentence.
+    """
+    source = sentence_rows.get(question_row["source_sentence_id"])
+    exact = question_row["location_status"] == "exact_quote"
     return {
-        "id": question["id"],
-        "number": question["number"],
-        "questionType": question["question_type"],
-        "content": question["content"],
-        "options": question["options"],
-        "correctAnswer": question["correct_answer"],
-        "analysis": question["analysis"],
-        "steps": question["steps"],
-        "location": source["source"] if source and question["location_status"] == "exact_quote" else "待人工定位",
-        "sourceSentence": source["text"] if source and question["location_status"] == "exact_quote" else "",
-        "sourceSentenceId": question["source_sentence_id"] if question["location_status"] == "exact_quote" else None,
-        "answerSource": question["answer_source"],
-        "answerSourceNote": question["answer_source_note"],
-        "reviewStatus": question["review_status"],
-        "locationStatus": question["location_status"],
-        "sourceQuote": question["source_quote"],
+        "id": question_row["id"],
+        "number": question_row["number"],
+        "questionType": question_row["question_type"],
+        "content": question_row["content"],
+        "options": json.loads(question_row["options_json"]),
+        "correctAnswer": question_row["correct_answer"],
+        "analysis": {
+            key: {
+                "trapType": value.get("trapType") or value.get("trap_type", ""),
+                "explanation": value.get("explanation", ""),
+            }
+            for key, value in json.loads(question_row["analysis_json"]).items()
+        },
+        "steps": json.loads(question_row["steps_json"]),
+        "location": source["source_label"] if source and exact else "待人工定位",
+        "sourceSentence": source["text"] if source and exact else "",
+        "sourceSentenceId": question_row["source_sentence_id"] if exact else None,
+        "answerSource": question_row["answer_source"],
+        "answerSourceNote": question_row["answer_source_note"],
+        "reviewStatus": question_row["review_status"],
+        "locationStatus": question_row["location_status"],
+        "sourceQuote": question_row["source_quote"],
         "sourceHighlights": [],
-        "passage": passage_row["text"] if passage_row else "",
-        "passageId": question["passage_id"],
-        "year": question["year"],
-        "examType": question["exam_type"],
-        "textNumber": question["text_number"],
+        "passage": passage_text,
+        "passageId": question_row["passage_id"],
+        "year": question_row["year"],
+        "examType": question_row["exam_type"],
+        "textNumber": question_row["text_number"],
     }
 
 
 @app.get("/api/questions/full")
-def questions_full(conn: DB):
-    rows = conn.execute(
-        "SELECT q.id FROM exam_questions q JOIN exam_passages p ON p.id=q.passage_id WHERE p.publication_status='published' ORDER BY q.year DESC, q.passage_id, q.number"
+def questions_full(
+    conn: DB,
+    year: int | None = Query(default=None, ge=2000, le=2100),
+    exam_type: str = Query(default="", max_length=16),
+    text_number: int | None = Query(default=None, ge=1, le=4),
+    include_passage: bool = Query(default=True),
+):
+    """List published questions in three fixed queries (no per-question N+1).
+
+    Optional filters mirror the reading-train cascade (year / exam_type /
+    text_number). include_passage=false omits passage bodies from each item so
+    a full-catalog listing stays lightweight; the passage text is then fetched
+    per passage on demand instead of being repeated once per question.
+    """
+    clauses = ["p.publication_status='published'"]
+    params: list[Any] = []
+    if year is not None:
+        clauses.append("q.year=?")
+        params.append(year)
+    if exam_type.strip():
+        clauses.append("q.exam_type=?")
+        params.append(exam_type.strip())
+    if text_number is not None:
+        clauses.append("q.text_number=?")
+        params.append(text_number)
+    question_rows = conn.execute(
+        "SELECT q.* FROM exam_questions q JOIN exam_passages p ON p.id=q.passage_id "
+        f"WHERE {' AND '.join(clauses)} "
+        "ORDER BY q.year DESC, q.passage_id, q.number",
+        params,
     ).fetchall()
-    items = [
-        item
-        for item in (_full_question(conn, row["id"], include_drafts=False) for row in rows)
-        if item is not None
-    ]
-    return {"items": items}
+
+    sentence_ids = sorted({r["source_sentence_id"] for r in question_rows if r["source_sentence_id"]})
+    sentence_rows: dict[str, sqlite3.Row] = {}
+    if sentence_ids:
+        placeholders = ",".join("?" for _ in sentence_ids)
+        for row in conn.execute(
+            f"SELECT s.* FROM exam_sentences s WHERE s.id IN ({placeholders})",
+            sentence_ids,
+        ):
+            sentence_rows[row["id"]] = row
+
+    passage_texts: dict[str, str] = {}
+    if include_passage:
+        passage_ids = sorted({r["passage_id"] for r in question_rows})
+        if passage_ids:
+            placeholders = ",".join("?" for _ in passage_ids)
+            for row in conn.execute(
+                f"SELECT id, text FROM exam_passages WHERE id IN ({placeholders})",
+                passage_ids,
+            ):
+                passage_texts[row["id"]] = row["text"]
+
+    return {
+        "items": [
+            _assemble_full_question(row, sentence_rows, passage_texts.get(row["passage_id"], ""))
+            for row in question_rows
+        ]
+    }
 
 
-def _validation_error(exc: ImportValidationError) -> HTTPException:
-    return HTTPException(status_code=422, detail={
-        "code": "invalid_exam", "message": "真题校验失败，未入库", "issues": exc.issues,
-    })
-
-
-def _insert_sentences(conn, passage_id, payload, passage_text, prefix):
-    rows = split_passage(passage_text)
-    for global_index, row in enumerate(rows, 1):
-        row["id"] = f"{passage_id}_s{global_index}"
-        row["source"] = (
-            f"{prefix} · {payload.year} {payload.exam_type} Text {payload.text_number} · "
-            f"第{row['paragraph']}段第{row['sentence_index']}句"
-        )
-        conn.execute(
-            "INSERT INTO exam_sentences "
-            "(id, passage_id, year, exam_type, text_number, paragraph, sentence_index, "
-            "text, grammar_tags, source_label, char_start, char_end) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, '[]', ?, ?, ?)",
-            (row["id"], passage_id, payload.year, payload.exam_type, payload.text_number,
-             row["paragraph"], row["sentence_index"], row["text"], row["source"],
-             row["char_start"], row["char_end"]),
-        )
-    return rows
-
-
-def _analysis_fields(question, analyzed=None):
-    analyzed = analyzed or {}
-    raw = analyzed.get("analysis") or {}
-    analysis = {}
-    for key in LETTERS:
-        item = raw.get(key) if isinstance(raw.get(key), dict) else {}
-        trap = item.get("trapType", "待分析")
-        explanation = item.get("explanation", "")
-        if key == question["correct_answer"]:
-            if trap and trap != "正确":
-                explanation = "模型分析与当前答案冲突，请复核。"
-            trap = "正确"
-            explanation = explanation or "按当前导入答案标记，尚未人工复核。"
-        elif trap == "正确":
-            trap = "待分析"
-            explanation = "模型分析与当前答案冲突，请复核。"
-        analysis[key] = {"trapType": trap or "待分析",
-                         "explanation": explanation or "尚未生成该选项分析。"}
-    qtype = analyzed.get("question_type") or question.get("question_type", "细节题")
-    if qtype not in QUESTION_TYPES:
-        qtype = "细节题"
-    steps = analyzed.get("steps") or [
-        "识别题型与题干关键词。", "回到原文核对证据，无法定位时人工复核。",
-        "逐项比对，标注陷阱类型。", "依据可靠答案核对结论。",
-    ]
-    return qtype, analysis, steps
-
-
-def _insert_question(conn, passage_id, payload, question, analyzed, sentence_rows,
-                     passage_text, answer_source, source_note):
-    qtype, analysis, steps = _analysis_fields(question, analyzed)
-    quote = question.get("source_quote", "")
-    location = locate_quote(quote, passage_text, sentence_rows)
-    question_id = f"{passage_id}_q{question['number']}"
-    conn.execute(
-        "INSERT INTO exam_questions "
-        "(id, passage_id, year, exam_type, text_number, number, question_type, content, "
-        "options_json, correct_answer, analysis_json, steps_json, source_sentence_id, "
-        "answer_source, answer_source_note, review_status, source_quote, location_status) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)",
-        (question_id, passage_id, payload.year, payload.exam_type, payload.text_number,
-         question["number"], qtype, question["content"],
-         json.dumps(question["options"], ensure_ascii=False), question["correct_answer"],
-         json.dumps(analysis, ensure_ascii=False), json.dumps(steps, ensure_ascii=False),
-         location["source_sentence_id"], answer_source, source_note, quote,
-         location["location_status"]),
-    )
-    return question_id
-
-
-def _manual_duplicate(conn, payload, passage_text):
-    # Separate manual questions can share a passage, but repeated submissions of
-    # the same question are rejected instead of creating indistinguishable copies.
-    return conn.execute(
-        "SELECT q.id FROM exam_questions q JOIN exam_passages p ON p.id=q.passage_id "
-        "WHERE p.year=? AND p.exam_type=? AND p.text_number=? AND p.text=? AND q.content=?",
-        (payload.year, payload.exam_type, payload.text_number, passage_text, payload.content.strip()),
-    ).fetchone()
-
-
-def _duplicate_error():
-    return HTTPException(status_code=409, detail={
-        "code": "duplicate_exam", "message": "该真题已导入，请先核对现有题库；本次未写入或覆盖。",
-    })
-
-
+# The team CLI (scripts/question_bank.py) is the only ingestion path. These
+# retired student-facing routes keep their 410 contract so old clients and
+# documentation links keep receiving an explicit migration notice.
 @app.post("/api/exams/import", dependencies=[Depends(_team_cli_only)])
-def import_exam(payload: ExamImportRequest, conn: DB):
-    options = {key: payload.options.get(key, "").strip() for key in LETTERS}
-    if set(payload.options) != set(LETTERS) or not all(options.values()):
-        raise HTTPException(status_code=400, detail="A/B/C/D four options are required")
-    passage_text = normalize_passage(payload.passage)
-    if len(passage_text) < 50 or not payload.content.strip():
-        raise HTTPException(status_code=422, detail="文章或题干不能为空，文章须至少 50 字符")
-    if _manual_duplicate(conn, payload, passage_text):
-        raise _duplicate_error()
-    # No write transaction is held during network/LLM calls.
-    analyzed = analyze_imported_question(
-        passage_text, payload.content.strip(), options, payload.correct_answer,
-    )
-    question = {"number": 1, "content": payload.content.strip(), "options": options,
-                "correct_answer": payload.correct_answer, "question_type": payload.question_type,
-                "source_quote": (analyzed or {}).get("source_quote", "")}
-    passage_id = f"custom_{uuid.uuid4().hex}"
-    with conn:
-        conn.execute("BEGIN IMMEDIATE")
-        if _manual_duplicate(conn, payload, passage_text):
-            raise _duplicate_error()
-        conn.execute(
-            "INSERT INTO exam_passages (id, year, exam_type, text_number, text) VALUES (?, ?, ?, ?, ?)",
-            (passage_id, payload.year, payload.exam_type, payload.text_number, passage_text),
-        )
-        rows = _insert_sentences(conn, passage_id, payload, passage_text, "自定义导入")
-        question_id = _insert_question(
-            conn, passage_id, payload, question, analyzed, rows, passage_text,
-            "manual", "用户手工录入答案，尚未人工复核来源",
-        )
-    return {"ok": True, "question_id": question_id, "passage_id": passage_id,
-            "analysis_source": "deepseek" if analyzed else "fallback",
-            "answer_source": "manual", "review_status": "pending",
-            "question": _full_question(conn, question_id)}
-
-
-def _download_pdf_text(url: str) -> str:
-    if not url.lower().startswith(("http://", "https://")):
-        raise HTTPException(status_code=400, detail="PDF URL must use http(s)")
-    response = None
-    for trust_env in (False, True):
-        try:
-            with httpx.Client(
-                follow_redirects=True, timeout=60, trust_env=trust_env
-            ) as client:
-                response = client.get(url)
-                response.raise_for_status()
-                break
-        except Exception:
-            response = None
-    if response is None:
-        raise HTTPException(status_code=400, detail="PDF download failed")
-    if len(response.content) > 30 * 1024 * 1024:
-        raise HTTPException(status_code=400, detail="PDF is larger than 30MB")
-    try:
-        reader = PdfReader(io.BytesIO(response.content))
-        return "\n".join((page.extract_text() or "") for page in reader.pages)
-    except Exception as exc:  # noqa: BLE001
-        raise HTTPException(status_code=400, detail=f"PDF parse failed: {exc}") from exc
-
-
-def _slice_text(raw: str, text_number: int) -> str:
-    pattern = re.compile(
-        rf"(?is)\bText\s*{text_number}\b(.*?)(?=\bText\s*{text_number + 1}\b|\bSection\s*III\b|\bPart\s*B\b|$)"
-    )
-    match = pattern.search(raw)
-    return match.group(1) if match else raw
-
-
-def _auto_duplicate(conn, payload):
-    # Seed examples are placeholders and must not block a first real import.
-    return conn.execute(
-        "SELECT id FROM exam_passages WHERE year=? AND exam_type=? AND text_number=? "
-        "AND (id LIKE 'auto_%' OR id LIKE 'custom_%') LIMIT 1",
-        (payload.year, payload.exam_type, payload.text_number),
-    ).fetchone()
+def import_exam_retired():
+    raise HTTPException(status_code=410, detail="题库管理已迁移到团队离线命令行 scripts/question_bank.py，学生接口不接受导入或管理操作")
 
 
 @app.post("/api/exams/auto-import", dependencies=[Depends(_team_cli_only)])
-def auto_import_exam(payload: AutoImportRequest, conn: DB):
-    try:
-        numbers = expected_numbers(payload.text_number)
-        parse_answer_key(payload.answer_key, numbers)
-    except ImportValidationError as exc:
-        raise _validation_error(exc) from exc
-    if _auto_duplicate(conn, payload):
-        raise _duplicate_error()
-    if not llm_status()["llm_configured"]:
-        raise HTTPException(status_code=400, detail="LLM_API_KEY is required for automatic PDF import")
-    if payload.text and payload.text.strip():
-        raw = payload.text
-    elif payload.url:
-        raw = _download_pdf_text(payload.url)
-    else:
-        raise HTTPException(status_code=400, detail="url or text is required")
-    sliced = _slice_text(raw, payload.text_number)
-    if not sliced.strip():
-        raise HTTPException(status_code=422, detail="未提取到文本；扫描版 PDF 需要先做 OCR")
-    if len(sliced) > 50000:
-        raise HTTPException(status_code=422, detail="当前 Text 超过 50000 字符，请提供该篇文本，不能静默截断")
-    extraction = extract_exam_text(
-        sliced, payload.year, payload.exam_type, payload.text_number, payload.answer_key,
-    )
-    if extraction is None:
-        raise HTTPException(status_code=422, detail="failed to extract reading text")
-    try:
-        validated = validate_extraction(extraction, payload.text_number, payload.answer_key)
-    except ImportValidationError as exc:
-        raise _validation_error(exc) from exc
-    passage_text = validated["passage"]
-    questions = validated["questions"]
-    answer_source = validated["answer_source"]
-    # Model analysis is prepared entirely before starting the atomic DB write.
-    batch = analyze_imported_questions_batch(passage_text, questions)
-    passage_id = f"auto_{uuid.uuid4().hex}"
-    question_ids = []
-    with conn:
-        conn.execute("BEGIN IMMEDIATE")
-        # Recheck while holding the write lock: handles concurrent duplicate requests.
-        if _auto_duplicate(conn, payload):
-            raise _duplicate_error()
-        conn.execute(
-            "INSERT INTO exam_passages (id, year, exam_type, text_number, text) VALUES (?, ?, ?, ?, ?)",
-            (passage_id, payload.year, payload.exam_type, payload.text_number, passage_text),
-        )
-        rows = _insert_sentences(conn, passage_id, payload, passage_text, "自动导入")
-        note = payload.answer_source_note.strip() or (
-            "用户提供答案序列，尚未核对权威来源" if answer_source == "provided"
-            else "模型根据文章推断，尚未人工复核"
-        )
-        for question in questions:
-            question_ids.append(_insert_question(
-                conn, passage_id, payload, question, (batch or {}).get(question["number"]),
-                rows, passage_text, answer_source, note,
-            ))
-    items = [_full_question(conn, qid) for qid in question_ids]
-    warnings = ["导入题目尚未人工复核，答案来源不代表答案已核实。"]
-    if "\n\n" not in passage_text:
-        warnings.append("提取文本无明确空行段落；目前作为一段保存，不代表原卷只有一段。")
-    if any(item["locationStatus"] != "exact_quote" for item in items):
-        warnings.append("部分题目无唯一单句证据，保留引文并等待人工定位。")
-    return {"ok": True, "passage_id": passage_id, "question_ids": question_ids,
-            "analysis_source": "deepseek" if batch else "fallback",
-            "answer_source": answer_source, "review_status": "pending",
-            "warnings": warnings, "questions": items}
+def auto_import_exam_retired():
+    raise HTTPException(status_code=410, detail="题库管理已迁移到团队离线命令行 scripts/question_bank.py，学生接口不接受导入或管理操作")
 
 
 @app.get("/api/vocab/search")
@@ -737,25 +575,6 @@ def tool_search_exams(
 
 
 @app.get("/api/agent/runs", dependencies=[Depends(_team_cli_only)])
-def agent_runs(
-    conn: DB,
-    limit: int = Query(default=10, ge=1, le=50),
-):
-    rows = conn.execute(
-        "SELECT id, workflow, input_json, output_json, tool_trace_json, created_at "
-        "FROM agent_runs ORDER BY id DESC LIMIT ?",
-        (limit,),
-    ).fetchall()
-    return {
-        "items": [
-            {
-                "id": row["id"],
-                "workflow": row["workflow"],
-                "input": json.loads(row["input_json"]),
-                "output": json.loads(row["output_json"]),
-                "tool_trace": json.loads(row["tool_trace_json"]),
-                "created_at": row["created_at"],
-            }
-            for row in rows
-        ]
-    }
+def agent_runs_retired():
+    # agent_runs rows are inspectable offline via SQLite / team tooling.
+    raise HTTPException(status_code=410, detail="题库管理已迁移到团队离线命令行 scripts/question_bank.py，学生接口不接受导入或管理操作")

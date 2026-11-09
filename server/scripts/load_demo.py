@@ -23,7 +23,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 if str(BASE_DIR) not in sys.path:
     sys.path.insert(0, str(BASE_DIR))
 
-from db import DB_PATH, connect, init_db  # noqa: E402
+from db import DB_PATH, connect, delete_draft_slot, init_db  # noqa: E402
 
 SNAPSHOT = BASE_DIR / "data" / "demo_snapshot.json"
 IMPORTED_PASSAGE_WHERE = "id LIKE 'auto_%' OR id LIKE 'bank_%' OR id LIKE 'custom_%'"
@@ -65,6 +65,9 @@ def main() -> int:
             conn.execute(f"DELETE FROM exam_passages WHERE {IMPORTED_PASSAGE_WHERE}")
 
         for row in snapshot["passages"]:
+            delete_draft_slot(
+                conn, row["year"], row["exam_type"], row["text_number"]
+            )
             conn.execute(
                 "INSERT OR REPLACE INTO exam_passages "
                 "(id, year, exam_type, text_number, text, publication_status, revision, "

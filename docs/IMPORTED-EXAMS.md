@@ -26,4 +26,16 @@
 
 来源和答案说明保存在快照各篇source_note及各题answer_source_note中。原2023/2024英语一保留原有模型解析，其余来自提供资料；仍需组内人工核对。
 
+## 原文证据定位状态（2026-11-03 批量重算后）
+
+快照中340题已由 `scripts/locate_evidence.py` 确定性重算（详见[黄炜杰-原文证据定位说明](黄炜杰-原文证据定位说明.md)）：
+
+| location_status | 题数 | 说明 |
+| --- | --- | --- |
+| exact_quote | 141 | 引文唯一匹配且绑定证据句，学生端显示定位 |
+| multi_sentence | 76 | 引文跨句，需人工补 evidence_note |
+| pending | 123 | 74题无引文 + 49题引文与正文存在标点/符号差异 |
+
+旧环境（unverified 快照）安装的队友在 server 目录运行 `python scripts/locate_evidence.py --actor "操作人"` 即可获得同样结果（幂等）。
+
 快照不含个人学习历史、API密钥和原始PDF。材料仅用于课程小组交流；公开分发前确认第三方内容许可。

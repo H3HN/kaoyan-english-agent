@@ -80,15 +80,14 @@ def main(argv=None):
         if args.command == "prepare-pdf":
             from pypdf import PdfReader
             from llm import extract_exam_text
-            from exam_import import expected_numbers, parse_answer_key, validate_extraction
+            from exam_import import expected_numbers, parse_answer_key, slice_text, validate_extraction
             parse_answer_key(args.answer_key, expected_numbers(args.text_number))
             if args.pdf.stat().st_size > 30*1024*1024:
                 raise BankError("PDF 超过 30MB")
             raw = "\n\n".join(p.extract_text() or "" for p in PdfReader(args.pdf).pages)
             if not raw.strip(): raise BankError("PDF 无可提取文本，扫描件需先 OCR")
             # Reuse established Text slicing, with the known original-layout limitations.
-            from app import _slice_text
-            sliced = _slice_text(raw,args.text_number)
+            sliced = slice_text(raw, args.text_number)
             if len(sliced) > 50000:
                 raise BankError("目标 Text 超过 50000 字符，请先分离文章和五题，避免截断")
             extracted = extract_exam_text(sliced,args.year,args.exam,args.text_number,args.answer_key)

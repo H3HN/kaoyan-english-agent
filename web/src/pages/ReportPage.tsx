@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import {
   AlertTriangle,
   ArrowRight,
@@ -18,74 +19,102 @@ import { SectionHeader } from '../components/SectionHeader'
 import { StatCard } from '../components/StatCard'
 import { Tag } from '../components/Tag'
 import { QUESTION_TYPES } from '../data/content'
+import { api, type ReportResponse } from '../lib/api'
 import { formatRelative } from '../lib/format'
-import { useAppStore } from '../store/AppStore'
 
 export default function ReportPage() {
-  const { records, dueWords } = useAppStore()
-  const total = records.length
-  const correct = records.filter((record) => record.isCorrect).length
-  const accuracy = total > 0 ? correct / total : 0
+  const [report, setReport] = useState<ReportResponse | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
+
+  useEffect(() => {
+    let alive = true
+    api
+      .getReport()
+      .then((data) => {
+        if (alive) {
+          setReport(data)
+          setError(false)
+        }
+      })
+      .catch(() => {
+        if (alive) setError(true)
+      })
+      .finally(() => {
+        if (alive) setLoading(false)
+      })
+    return () => {
+      alive = false
+    }
+  }, [])
+
+  const total = report?.total ?? 0
+  const correct = report?.correct ?? 0
+  const accuracy = report?.accuracy ?? 0
+  const dueWords = report?.due_words ?? []
 
   const byType = QUESTION_TYPES.map((type) => {
-    const items = records.filter((record) => record.questionType === type.name)
-    const typeCorrect = items.filter((record) => record.isCorrect).length
+    const data = report?.by_type?.[type.name]
     return {
       ...type,
-      total: items.length,
-      correct: typeCorrect,
-      accuracy: items.length > 0 ? typeCorrect / items.length : 0,
+      total: data?.total ?? 0,
+      correct: data?.correct ?? 0,
+      accuracy: data?.accuracy ?? 0,
     }
   })
 
-  const weakTypes = byType
-    .filter((item) => item.total > 0 && item.accuracy < 0.7)
-    .sort((a, b) => a.accuracy - b.accuracy)
-
-  const days = Array.from({ length: 7 }, (_, index) => {
-    const date = new Date()
-    date.setDate(date.getDate() - (6 - index))
-    const count = records.filter((record) => {
-      const time = new Date(record.time)
-      return (
-        time.getFullYear() === date.getFullYear() &&
-        time.getMonth() === date.getMonth() &&
-        time.getDate() === date.getDate()
-      )
-    }).length
+  const weakTypes = (report?.weak_types ?? []).map((item) => {
+    const meta = QUESTION_TYPES.find((type) => type.name === item.type)
     return {
-      key: date.toISOString(),
-      label: new Intl.DateTimeFormat('zh-CN', { weekday: 'short' }).format(
-        date,
-      ),
-      count,
+      name: item.type,
+      steps: meta?.steps ?? [],
+      total: item.total,
+      correct: item.correct,
+      accuracy: item.accuracy,
+    }
+  })
+
+  const days = (report?.daily_counts ?? []).map((day) => {
+    const date = new Date(`${day.date}T00:00:00`)
+    return {
+      key: day.date,
+      label: new Intl.DateTimeFormat('zh-CN', { weekday: 'short' }).format(date),
+      count: day.count,
     }
   })
   const maxCount = Math.max(1, ...days.map((day) => day.count))
 
-  const suggestions: string[] = []
-  if (weakTypes.length > 0) {
-    weakTypes.slice(0, 2).forEach((item) => {
-      suggestions.push(
-        `${item.name}正确率 ${Math.round(item.accuracy * 100)}%，建议从真题中筛出同类题，每天精做 2–3 道并复述排除理由。`,
-      )
-    })
-  } else {
-    suggestions.push('各题型正确率均达标，保持当前节奏，尝试限时训练提升速度。')
-  }
-  if (dueWords.length > 0) {
-    suggestions.push(
-      `今天有 ${dueWords.length} 个单词到期，先完成一轮无提示回忆，再开始新的阅读。`,
+  const suggestions = report?.suggestions ?? []
+  const recentRecords = report?.recent_records ?? []
+
+  if (loading && !report) {
+    return (
+      <div
+        role="status"
+        className="flex items-center justify-center rounded-xl border border-slate-200 bg-white p-8 text-sm text-slate-500"
+      >
+        正在加载学习报告…
+      </div>
     )
   }
-  if (total < 30) {
-    suggestions.push(
-      `目前累计 ${total} 题，样本还不够大。建议先累计 30 题以上，再做稳定的薄弱分析。`,
+
+  if (error && !report) {
+    return (
+      <EmptyState
+        icon={BarChart3}
+        title="暂时无法读取学习报告"
+        action={
+          <Link
+            to="/options"
+            className="inline-flex items-center gap-2 rounded-lg bg-slate-800 px-4 py-2.5 text-xs font-semibold text-white hover:bg-slate-900"
+          >
+            去做一题
+            <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+        }
+      />
     )
   }
-  suggestions.push(
-    '每完成一题，固定写下一句“为什么排除”，比只记正确答案更有迁移价值。',
-  )
 
   return (
     <div className="space-y-6">
@@ -322,22 +351,22 @@ export default function ReportPage() {
                 <span>结果</span>
                 <span className="text-right">时间</span>
               </div>
-              {records.slice(0, 8).map((record) => (
+              {recentRecords.slice(0, 8).map((record, index) => (
                 <div
-                  key={record.id}
+                  key={`${record.question_id}-${record.created_at}-${index}`}
                   className="flex items-center justify-between gap-3 border-b border-slate-100 px-5 py-3.5 last:border-b-0 sm:grid sm:grid-cols-[1fr_150px_90px_100px]"
                 >
-                  <Tag tone="violet">{record.questionType}</Tag>
+                  <Tag tone="violet">{record.question_type}</Tag>
                   <span className="hidden text-xs text-slate-500 sm:block">
-                    选 {record.userAnswer} · 答案 {record.correctAnswer}
+                    选 {record.user_answer} · 答案 {record.correct_answer}
                   </span>
                   <div>
-                    <Tag tone={record.isCorrect ? 'emerald' : 'red'} dot>
-                      {record.isCorrect ? '正确' : '错误'}
+                    <Tag tone={record.is_correct ? 'emerald' : 'red'} dot>
+                      {record.is_correct ? '正确' : '错误'}
                     </Tag>
                   </div>
                   <span className="text-right text-[11px] text-slate-400">
-                    {formatRelative(record.time)}
+                    {formatRelative(record.created_at)}
                   </span>
                 </div>
               ))}

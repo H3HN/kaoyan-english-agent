@@ -184,3 +184,11 @@ def locate_quote(quote: str, passage: str, sentences: list[dict[str, Any]]) -> d
     elif hits:
         result["location_status"] = "multi_sentence"
     return result
+
+def slice_text(raw: str, text_number: int) -> str:
+    """Extract the Text N block from a raw exam page dump (PDF text order)."""
+    pattern = re.compile(
+        rf"(?is)\bText\s*{text_number}\b(.*?)(?=\bText\s*{text_number + 1}\b|\bSection\s*III\b|\bPart\s*B\b|$)"
+    )
+    match = pattern.search(raw)
+    return match.group(1) if match else raw

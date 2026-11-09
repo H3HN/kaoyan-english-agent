@@ -10,6 +10,7 @@ import sqlite3
 from datetime import datetime, timezone
 from typing import Any
 
+from db import delete_draft_passage
 from exam_import import (ImportValidationError, LETTERS, QUESTION_TYPES,
                          locate_quote, normalize_passage, split_passage, validate_extraction)
 
@@ -159,11 +160,13 @@ def _save(conn, data, raw, actor, update):
         # The two shipped partial demos use real year/Text labels but local
         # question numbers. Keep their records; do not let them reserve a real Text.
         placeholders = {"2024_en1_t1", "2023_en1_t1"}
-        existing = [r for r in existing if not (
+        placeholder_rows = [r for r in existing if (
             r["id"] in placeholders and r["publication_status"] == "draft"
             and {q[0] for q in conn.execute("SELECT number FROM exam_questions WHERE passage_id=?", (r["id"],))}
             in ({1}, {1, 2})
         )]
+        placeholder_ids = {r["id"] for r in placeholder_rows}
+        existing = [r for r in existing if r["id"] not in placeholder_ids]
         if existing and not update:
             raise BankError("该 Text 已存在；更正须使用 --update、passage_id 和 expected_revision")
         if update:
@@ -176,6 +179,8 @@ def _save(conn, data, raw, actor, update):
             revision = row["revision"] + 1
             _event(conn, pid, "before_update", actor)
         else:
+            for placeholder in placeholder_rows:
+                delete_draft_passage(conn, placeholder["id"])
             pid = f"bank_{data['year']}_{1 if data['exam_type']=='英语一' else 2}_{data['text_number']}"
             revision = 1
             conn.execute("INSERT INTO exam_passages (id,year,exam_type,text_number,text) VALUES (?,?,?,?,?)",

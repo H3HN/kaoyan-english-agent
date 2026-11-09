@@ -273,16 +273,22 @@ def _seed_exams(conn: sqlite3.Connection) -> None:
     path = DATA_DIR / "exam_slices.json"
     data = json.loads(path.read_text(encoding="utf-8"))
 
-    conn.executemany(
-        """
-        INSERT OR REPLACE INTO exam_passages (id, year, exam_type, text_number, text)
-        VALUES (?, ?, ?, ?, ?)
-        """,
-        [
-            (item["id"], item["year"], item["exam_type"], item["text_number"], item["text"])
-            for item in data["passages"]
-        ],
-    )
+    inserted_ids = set()
+    for item in data["passages"]:
+        occupied = conn.execute(
+            "SELECT 1 FROM exam_passages WHERE year=? AND exam_type=? AND text_number=?",
+            (item["year"], item["exam_type"], item["text_number"]),
+        ).fetchone()
+        if occupied:
+            continue
+        conn.execute(
+            "INSERT INTO exam_passages (id, year, exam_type, text_number, text)"
+            " VALUES (?, ?, ?, ?, ?)",
+            (item["id"], item["year"], item["exam_type"], item["text_number"], item["text"]),
+        )
+        inserted_ids.add(item["id"])
+    if not inserted_ids:
+        return
     conn.executemany(
         """
         INSERT OR REPLACE INTO exam_sentences
@@ -304,6 +310,7 @@ def _seed_exams(conn: sqlite3.Connection) -> None:
                 item["source_label"],
             )
             for item in data["sentences"]
+            if item["passage_id"] in inserted_ids
         ],
     )
     conn.executemany(
@@ -331,6 +338,7 @@ def _seed_exams(conn: sqlite3.Connection) -> None:
                 item["source_sentence_id"],
             )
             for item in data["questions"]
+            if item["passage_id"] in inserted_ids
         ],
     )
 

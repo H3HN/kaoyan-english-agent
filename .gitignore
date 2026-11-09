@@ -63,3 +63,5 @@ kaoyan_agent/data/
 /*.jpg
 /*.jpeg
 /*.webp
+# Deliverable design documents (docs/pdf)
+!docs/pdf/*.pdf

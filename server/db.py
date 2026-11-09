@@ -134,6 +134,28 @@ CREATE TABLE IF NOT EXISTS agent_runs (
     tool_trace_json TEXT NOT NULL,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+CREATE TABLE IF NOT EXISTS study_plans (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    plan_date TEXT NOT NULL,
+    task_type TEXT NOT NULL,
+    title TEXT NOT NULL,
+    detail TEXT NOT NULL DEFAULT '',
+    target_count INTEGER NOT NULL DEFAULT 1,
+    done_count INTEGER NOT NULL DEFAULT 0,
+    status TEXT NOT NULL DEFAULT 'pending',
+    link TEXT NOT NULL DEFAULT '',
+    source_json TEXT NOT NULL DEFAULT '{}',
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS plan_settings (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    exam_date TEXT NOT NULL DEFAULT '',
+    daily_minutes INTEGER NOT NULL DEFAULT 60,
+    target_score INTEGER NOT NULL DEFAULT 70,
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
 """
 
 

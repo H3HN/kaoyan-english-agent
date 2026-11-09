@@ -3,10 +3,12 @@ import {
   ArrowRight,
   BookMarked,
   BookOpenCheck,
+  CalendarCheck,
   ChevronRight,
   LibraryBig,
   MessageSquareText,
   ScanText,
+  Sparkles,
   Target,
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
@@ -15,7 +17,7 @@ import { PageHero } from '../components/PageHero'
 import { SectionHeader } from '../components/SectionHeader'
 import { StatCard } from '../components/StatCard'
 import { Tag } from '../components/Tag'
-import { api, type MetaInfo } from '../lib/api'
+import { api, type InsightsResponse, type MetaInfo } from '../lib/api'
 import { formatRelative } from '../lib/format'
 import { useAppStore } from '../store/AppStore'
 
@@ -58,6 +60,7 @@ export default function DashboardPage() {
   const { words, records, dueWords, connected } = useAppStore()
   const [meta, setMeta] = useState<MetaInfo | null>(null)
   const [metaFailed, setMetaFailed] = useState(false)
+  const [insights, setInsights] = useState<InsightsResponse | null>(null)
 
   useEffect(() => {
     let alive = true
@@ -68,6 +71,21 @@ export default function DashboardPage() {
       })
       .catch(() => {
         if (alive) setMetaFailed(true)
+      })
+    return () => {
+      alive = false
+    }
+  }, [])
+
+  useEffect(() => {
+    let alive = true
+    api
+      .getInsights()
+      .then((data) => {
+        if (alive) setInsights(data)
+      })
+      .catch(() => {
+        // Proactive card is an enhancement; the dashboard still renders.
       })
     return () => {
       alive = false
@@ -152,6 +170,68 @@ export default function DashboardPage() {
           to="/report"
         />
       </div>
+
+      {insights ? (
+        <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+          <div className="flex flex-col gap-3 p-5 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0">
+              <p className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+                <Sparkles className="h-4 w-4 shrink-0 text-slate-400" strokeWidth={1.8} />
+                {insights.greeting}，
+                {insights.plan_ready
+                  ? `今天还有 ${insights.today_tasks.length} 项任务`
+                  : '今天还没有排计划'}
+              </p>
+              <p className="mt-1.5 text-[11px] leading-relaxed text-slate-500">
+                连续练习 {insights.streak_days} 天 · 到期单词 {insights.due_word_count}
+                {insights.weakest_type
+                  ? ` · 最薄弱：${insights.weakest_type.type} ${Math.round(insights.weakest_type.accuracy * 100)}%`
+                  : ' · 各题型均达标'}
+                {insights.exam_countdown !== null && insights.exam_countdown > 0
+                  ? ` · 距考试 ${insights.exam_countdown} 天`
+                  : ''}
+              </p>
+            </div>
+            <Link
+              to="/plan"
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-slate-800 px-3.5 py-2 text-xs font-semibold text-white transition-colors hover:bg-slate-900"
+            >
+              <CalendarCheck className="h-3.5 w-3.5" />
+              查看计划
+            </Link>
+          </div>
+          {insights.today_tasks.length > 0 ? (
+            <div className="border-t border-slate-100 px-5 py-3">
+              <div className="flex flex-wrap gap-2">
+                {insights.today_tasks.map((task) => (
+                  <Link
+                    key={task.id}
+                    to={task.link || '/options'}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-medium text-slate-600 transition-colors hover:border-slate-300 hover:bg-white hover:text-slate-900"
+                  >
+                    {task.title}
+                  </Link>
+                ))}
+              </div>
+            </div>
+          ) : null}
+          {insights.suggestions.length > 0 ? (
+            <div className="border-t border-slate-100 px-5 py-3">
+              <ul className="space-y-1.5">
+                {insights.suggestions.slice(0, 2).map((text) => (
+                  <li
+                    key={text}
+                    className="flex items-start gap-2 text-[11px] leading-relaxed text-slate-500"
+                  >
+                    <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-slate-300" />
+                    {text}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+        </section>
+      ) : null}
 
       {dueWords.length > 0 ? (
         <div className="flex flex-col gap-3 rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">

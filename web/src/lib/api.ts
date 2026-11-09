@@ -285,6 +285,59 @@ export interface ReportResponse {
   recent_records: ReportRecentRecord[]
 }
 
+export interface PlanItem {
+  id: number
+  plan_date: string
+  task_type: string
+  title: string
+  detail: string
+  target_count: number
+  done_count: number
+  status: 'pending' | 'done' | 'skipped'
+  link: string
+}
+
+export interface PlanDay {
+  date: string
+  weekday: string
+  is_today: boolean
+  items: PlanItem[]
+  done_count: number
+  total_count: number
+}
+
+export interface PlanSummary {
+  total: number
+  done: number
+  pending: number
+  ratio: number
+}
+
+export interface PlanResponse {
+  items: PlanItem[]
+  days: PlanDay[]
+  summary: PlanSummary
+}
+
+export interface PlanSettings {
+  exam_date: string
+  daily_minutes: number
+  target_score: number
+}
+
+export interface InsightsResponse {
+  greeting: string
+  due_word_count: number
+  weakest_type: ReportWeakType | null
+  streak_days: number
+  idle_days: number | null
+  exam_countdown: number | null
+  plan_ready: boolean
+  today_tasks: PlanItem[]
+  today_progress: PlanSummary
+  suggestions: string[]
+}
+
 export interface RareWord {
   word: string
   basic_meaning: string
@@ -447,4 +500,29 @@ export const api = {
     }),
 
   getReport: () => request<ReportResponse>('/report'),
+
+  getInsights: () => request<InsightsResponse>('/insights'),
+
+  getPlan: (weekOffset = 0) =>
+    request<PlanResponse>(`/plan?week_offset=${weekOffset}`),
+
+  generatePlan: (force = false) =>
+    request<PlanResponse & { created_dates: number }>(
+      `/plan/generate?force=${force}`,
+      { method: 'POST' },
+    ),
+
+  completePlanItem: (id: number, done = true) =>
+    request<{ id: number; status: string; done_count: number }>(
+      `/plan/items/${id}/done`,
+      { method: 'POST', body: JSON.stringify({ done }) },
+    ),
+
+  getPlanSettings: () => request<PlanSettings>('/plan/settings'),
+
+  updatePlanSettings: (payload: PlanSettings) =>
+    request<PlanSettings>('/plan/settings', {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    }),
 }

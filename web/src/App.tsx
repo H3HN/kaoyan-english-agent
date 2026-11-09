@@ -7,6 +7,7 @@ import DashboardPage from './pages/DashboardPage'
 import KnowledgePage from './pages/KnowledgePage'
 import LibraryPage from './pages/LibraryPage'
 import OptionsPage from './pages/OptionsPage'
+import PlanPage from './pages/PlanPage'
 import ReportPage from './pages/ReportPage'
 import SentencePage from './pages/SentencePage'
 import WordbookPage from './pages/WordbookPage'
@@ -22,6 +23,7 @@ export default function App() {
             <Route path="/options" element={<OptionsPage />} />
             <Route path="/library" element={<LibraryPage />} />
             <Route path="/chat" element={<ChatPage />} />
+            <Route path="/plan" element={<PlanPage />} />
             <Route path="/wordbook" element={<WordbookPage />} />
             <Route path="/report" element={<ReportPage />} />
             <Route path="/knowledge" element={<KnowledgePage />} />

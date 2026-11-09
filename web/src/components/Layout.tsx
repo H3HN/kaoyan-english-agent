@@ -5,6 +5,7 @@ import {
   BarChart3,
   BookMarked,
   BookOpenCheck,
+  CalendarCheck,
   Layers,
   LayoutDashboard,
   LibraryBig,
@@ -16,6 +17,7 @@ import {
 } from 'lucide-react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import { useAppStore } from '../store/AppStore'
+import { GlobalDock } from './GlobalDock'
 import { toneStyles, type Tone } from './Tag'
 
 type NavTone = 'home' | 'feature' | 'default'
@@ -34,6 +36,7 @@ const navItems: NavItem[] = [
   { to: '/sentence', label: '长难句拆解', icon: ScanText, tone: 'feature', accent: 'blue' },
   { to: '/options', label: '阅读真题训练', icon: Target, tone: 'feature', accent: 'emerald' },
   { to: '/chat', label: 'AI 对话', icon: MessageSquareText, tone: 'feature', accent: 'violet' },
+  { to: '/plan', label: '学习计划', icon: CalendarCheck, tone: 'feature', accent: 'blue' },
   { to: '/wordbook', label: '我的单词本', icon: BookMarked, tone: 'feature', accent: 'amber' },
   { to: '/library', label: '资料库', icon: Layers },
   { to: '/report', label: '学习报告', icon: BarChart3 },
@@ -46,6 +49,7 @@ const pageTitles: Record<string, string> = {
   '/options': '阅读真题训练 · 研英智学',
   '/library': '资料库 · 研英智学',
   '/chat': 'AI 对话 · 研英智学',
+  '/plan': '学习计划 · 研英智学',
   '/wordbook': '我的单词本 · 研英智学',
   '/report': '学习报告 · 研英智学',
   '/knowledge': '领域知识库 · 研英智学',
@@ -269,10 +273,12 @@ export function Layout({ children }: { children: ReactNode }) {
           </button>
         </header>
 
-        <main className="mx-auto w-full max-w-[1240px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+        <main className="mx-auto w-full max-w-[1240px] px-4 pt-6 pb-24 sm:px-6 lg:px-8 lg:pt-8">
           {children}
         </main>
       </div>
+
+      <GlobalDock />
     </div>
   )
 }

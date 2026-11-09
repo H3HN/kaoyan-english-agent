@@ -18,6 +18,14 @@ from llm import (
     analyze_sentence_breakdown,
     status as llm_status,
 )
+from plan import (
+    generate_plan,
+    get_insights,
+    get_or_create_settings,
+    get_plan,
+    mark_item_done,
+    update_settings,
+)
 from tools import (
     add_to_vocab_book,
     check_syllabus_vocab,
@@ -152,6 +160,16 @@ class RecordRequest(BaseModel):
 class VocabCheckRequest(BaseModel):
     text: str | None = None
     words: list[str] | None = None
+
+
+class PlanSettingsRequest(BaseModel):
+    exam_date: str = Field(default="", max_length=10)
+    daily_minutes: int = Field(default=60, ge=10, le=480)
+    target_score: int = Field(default=70, ge=0, le=100)
+
+
+class PlanItemDoneRequest(BaseModel):
+    done: bool = True
 
 
 
@@ -408,6 +426,53 @@ def create_record(payload: RecordRequest, conn: DB):
 @app.get("/api/report")
 def report(conn: DB):
     return get_report(conn)
+
+
+@app.get("/api/insights")
+def insights(conn: DB):
+    return get_insights(conn)
+
+
+@app.get("/api/plan")
+def plan(
+    conn: DB,
+    week_offset: int = Query(default=0, ge=-8, le=8),
+):
+    return get_plan(conn, week_offset)
+
+
+@app.post("/api/plan/generate")
+def plan_generate(
+    conn: DB,
+    force: bool = Query(default=False),
+):
+    return generate_plan(conn, force=force)
+
+
+@app.post("/api/plan/items/{item_id}/done")
+def plan_item_done(item_id: int, payload: PlanItemDoneRequest, conn: DB):
+    result = mark_item_done(conn, item_id, payload.done)
+    if result is None:
+        raise HTTPException(status_code=404, detail="plan item not found")
+    return result
+
+
+@app.get("/api/plan/settings")
+def plan_settings(conn: DB):
+    return get_or_create_settings(conn)
+
+
+@app.put("/api/plan/settings")
+def plan_settings_update(payload: PlanSettingsRequest, conn: DB):
+    try:
+        return update_settings(
+            conn,
+            payload.exam_date,
+            payload.daily_minutes,
+            payload.target_score,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
 
 
 def _assemble_full_question(

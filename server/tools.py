@@ -91,7 +91,8 @@ def _lemma_candidates(word: str) -> list[str]:
 def _find_vocab(conn: sqlite3.Connection, word: str) -> sqlite3.Row | None:
     for candidate in _lemma_candidates(word):
         row = conn.execute(
-            "SELECT * FROM syllabus_vocabulary WHERE word = ?", (candidate,)
+            "SELECT * FROM syllabus_vocabulary WHERE word = ? AND enabled = 1",
+            (candidate,),
         ).fetchone()
         if row:
             return row
@@ -695,7 +696,7 @@ def search_vocab(conn: sqlite3.Connection, keyword: str, limit: int = 20) -> lis
     rows = conn.execute(
         """
         SELECT * FROM syllabus_vocabulary
-        WHERE word LIKE ? OR basic_meaning LIKE ? OR rare_meaning LIKE ?
+        WHERE enabled = 1 AND (word LIKE ? OR basic_meaning LIKE ? OR rare_meaning LIKE ?)
         ORDER BY exam_frequency DESC, word
         LIMIT ?
         """,
@@ -712,8 +713,8 @@ def list_vocab(
     offset: int = 0,
     limit: int = 50,
 ) -> dict[str, Any]:
-    """浏览词库：关键词为空时返回全量分页列表。"""
-    where: list[str] = []
+    """浏览词库：关键词为空时返回全量分页列表（仅启用词条）。"""
+    where: list[str] = ["enabled = 1"]
     params: list[Any] = []
     if keyword:
         where.append("(word LIKE ? OR basic_meaning LIKE ? OR rare_meaning LIKE ?)")

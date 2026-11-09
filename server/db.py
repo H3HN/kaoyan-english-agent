@@ -12,10 +12,12 @@ PRAGMA foreign_keys = ON;
 CREATE TABLE IF NOT EXISTS syllabus_vocabulary (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     word TEXT NOT NULL UNIQUE,
+    phonetic TEXT NOT NULL DEFAULT '',
     basic_meaning TEXT NOT NULL,
     rare_meaning TEXT,
     exam_frequency INTEGER NOT NULL DEFAULT 0,
     level TEXT NOT NULL DEFAULT '基础',
+    enabled INTEGER NOT NULL DEFAULT 1,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -293,6 +295,10 @@ def migrate_schema(conn: sqlite3.Connection) -> None:
     passage text, using the half-open interval [char_start, char_end).
     """
     additions = {
+        "syllabus_vocabulary": {
+            "phonetic": "TEXT NOT NULL DEFAULT ''",
+            "enabled": "INTEGER NOT NULL DEFAULT 1",
+        },
         "exam_passages": {
             "publication_status": "TEXT NOT NULL DEFAULT 'draft'",
             "revision": "INTEGER NOT NULL DEFAULT 1",
@@ -315,6 +321,12 @@ def migrate_schema(conn: sqlite3.Connection) -> None:
         },
     }
     for table, columns in additions.items():
+        if not conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?",
+            (table,),
+        ).fetchone():
+            # Legacy fixtures may predate a table entirely; SCHEMA handles it.
+            continue
         existing = {
             row[1] for row in conn.execute(f"PRAGMA table_info({table})")
         }

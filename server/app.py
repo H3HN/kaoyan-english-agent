@@ -1,18 +1,37 @@
 import json
 import os
 import re
+import secrets
 import sqlite3
 import uuid
 from contextlib import asynccontextmanager
 from typing import Annotated, Any
 
-from fastapi import Depends, FastAPI, HTTPException, Query, Request
+from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from db import connect, init_db
+from admin_api import (
+    create_trap_rule as admin_create_trap,
+    create_vocab_entry as admin_create_vocab,
+    expected_admin_token,
+    get_stats as admin_stats,
+    get_vocab_entry as admin_get_vocab,
+    get_monitor as admin_get_monitor,
+    import_document as admin_import_document,
+    list_events as admin_list_events,
+    list_passages as admin_list_passages,
+    list_trap_rules as admin_list_traps,
+    list_vocab_entries as admin_list_vocab,
+    passage_detail as admin_passage_detail,
+    run_transition as admin_run_transition,
+    set_vocab_enabled as admin_set_vocab_enabled,
+    update_trap_rule as admin_update_trap,
+    update_vocab_entry as admin_update_vocab,
+)
 from exam_import import LETTERS
 from llm import (
     analyze_sentence_breakdown,
@@ -26,6 +45,7 @@ from plan import (
     mark_item_done,
     update_settings,
 )
+from question_bank import BankError
 from tools import (
     add_to_vocab_book,
     check_syllabus_vocab,
@@ -170,6 +190,38 @@ class PlanSettingsRequest(BaseModel):
 
 class PlanItemDoneRequest(BaseModel):
     done: bool = True
+
+
+class AdminImportRequest(BaseModel):
+    document: dict[str, Any]
+    actor: str = Field(default="管理员", max_length=40)
+
+
+class AdminTransitionRequest(BaseModel):
+    action: str = Field(min_length=1, max_length=20)
+    actor: str = Field(default="管理员", max_length=40)
+
+
+class AdminVocabRequest(BaseModel):
+    word: str = Field(default="", max_length=120)
+    phonetic: str = Field(default="", max_length=120)
+    basic_meaning: str = Field(default="", max_length=500)
+    rare_meaning: str = Field(default="", max_length=500)
+    exam_frequency: int = Field(default=0, ge=0, le=999)
+    level: str = Field(default="基础", max_length=20)
+    enabled: bool = True
+
+
+class AdminVocabToggleRequest(BaseModel):
+    enabled: bool
+
+
+class AdminTrapRequest(BaseModel):
+    name: str = Field(default="", max_length=60)
+    definition: str = Field(default="", max_length=1000)
+    signals: str = Field(default="", max_length=2000)
+    example: str = Field(default="", max_length=2000)
+    tone: str = Field(default="red", max_length=20)
 
 
 
@@ -643,3 +695,141 @@ def tool_search_exams(
 def agent_runs_retired():
     # agent_runs rows are inspectable offline via SQLite / team tooling.
     raise HTTPException(status_code=410, detail="题库管理已迁移到团队离线命令行 scripts/question_bank.py，学生接口不接受导入或管理操作")
+
+# ---------------------------------------------------------------------------
+# B-end content console (admin gate). Student routes above stay read-only; the
+# admin token only unlocks the console, it never broadens the student surface.
+# ---------------------------------------------------------------------------
+def require_admin(x_admin_token: str = Header(default="", alias="X-Admin-Token")):
+    """Single-admin token gate; override the token with ADMIN_TOKEN."""
+    if not x_admin_token or not secrets.compare_digest(
+        x_admin_token, expected_admin_token()
+    ):
+        raise HTTPException(status_code=401, detail="管理员令牌无效，请重新解锁")
+    return True
+
+
+ADMIN = Annotated[bool, Depends(require_admin)]
+
+
+@app.get("/api/admin/stats", dependencies=[Depends(require_admin)])
+def admin_workbench_stats(conn: DB):
+    return admin_stats(conn)
+
+
+@app.get("/api/admin/passages", dependencies=[Depends(require_admin)])
+def admin_passages(
+    conn: DB,
+    status: str = Query(default="", max_length=20),
+    q: str = Query(default="", max_length=80),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+):
+    return admin_list_passages(conn, status.strip(), q, page, page_size)
+
+
+@app.get("/api/admin/passages/{passage_id}", dependencies=[Depends(require_admin)])
+def admin_passage(passage_id: str, conn: DB):
+    detail = admin_passage_detail(conn, passage_id)
+    if detail is None:
+        raise HTTPException(status_code=404, detail="passage not found")
+    return detail
+
+
+@app.get(
+    "/api/admin/passages/{passage_id}/events",
+    dependencies=[Depends(require_admin)],
+)
+def admin_passage_events(passage_id: str, conn: DB):
+    return {"items": admin_list_events(conn, passage_id)}
+
+
+@app.post("/api/admin/passages/import", dependencies=[Depends(require_admin)])
+def admin_import(payload: AdminImportRequest, conn: DB):
+    try:
+        return admin_import_document(conn, payload.document, payload.actor)
+    except BankError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@app.post(
+    "/api/admin/passages/{passage_id}/transition",
+    dependencies=[Depends(require_admin)],
+)
+def admin_transition(passage_id: str, payload: AdminTransitionRequest, conn: DB):
+    try:
+        return admin_run_transition(conn, passage_id, payload.action, payload.actor)
+    except BankError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+@app.get("/api/admin/vocab", dependencies=[Depends(require_admin)])
+def admin_vocab_list(
+    conn: DB,
+    keyword: str = Query(default="", max_length=80),
+    level: str = Query(default="", max_length=20),
+    enabled: str = Query(default="", max_length=1),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+):
+    return admin_list_vocab(conn, keyword, level, enabled, page, page_size)
+
+
+@app.get("/api/admin/vocab/{word}", dependencies=[Depends(require_admin)])
+def admin_vocab_detail(word: str, conn: DB):
+    detail = admin_get_vocab(conn, word)
+    if detail is None:
+        raise HTTPException(status_code=404, detail="vocab entry not found")
+    return detail
+
+
+@app.post("/api/admin/vocab", dependencies=[Depends(require_admin)])
+def admin_vocab_create(payload: AdminVocabRequest, conn: DB):
+    try:
+        return admin_create_vocab(conn, payload.model_dump())
+    except BankError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@app.put("/api/admin/vocab/{word}", dependencies=[Depends(require_admin)])
+def admin_vocab_update(word: str, payload: AdminVocabRequest, conn: DB):
+    try:
+        return admin_update_vocab(conn, word, payload.model_dump())
+    except BankError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@app.post(
+    "/api/admin/vocab/{word}/toggle", dependencies=[Depends(require_admin)]
+)
+def admin_vocab_toggle(word: str, payload: AdminVocabToggleRequest, conn: DB):
+    try:
+        return admin_set_vocab_enabled(conn, word, payload.enabled)
+    except BankError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@app.get("/api/admin/trap-rules", dependencies=[Depends(require_admin)])
+def admin_trap_list(conn: DB):
+    return {"items": admin_list_traps(conn)}
+
+
+@app.post("/api/admin/trap-rules", dependencies=[Depends(require_admin)])
+def admin_trap_create(payload: AdminTrapRequest, conn: DB):
+    try:
+        return admin_create_trap(conn, payload.model_dump())
+    except BankError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@app.put(
+    "/api/admin/trap-rules/{rule_id}", dependencies=[Depends(require_admin)]
+)
+def admin_trap_update(rule_id: int, payload: AdminTrapRequest, conn: DB):
+    try:
+        return admin_update_trap(conn, rule_id, payload.model_dump())
+    except BankError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+@app.get("/api/admin/monitor", dependencies=[Depends(require_admin)])
+def admin_monitor(conn: DB):
+    return admin_get_monitor(conn)

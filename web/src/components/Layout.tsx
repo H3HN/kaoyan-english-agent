@@ -193,6 +193,13 @@ function SidebarContent({
 
       <div className="mt-auto pt-6">
         <div className="border-t border-slate-200 pt-4">
+          <Link
+            to="/admin/workbench"
+            className="mb-3 flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2 text-[11px] font-medium text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-800"
+          >
+            内容管理台
+            <span className="text-[10px] text-slate-400">管理员</span>
+          </Link>
           <p className="text-[11px] text-slate-500">福大智联 · 2026 秋</p>
           <p className="mt-1 text-[10px] text-slate-400">v0.3.0 · 前后端分离</p>
         </div>

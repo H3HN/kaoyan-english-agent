@@ -1,0 +1,2208 @@
+{
+  "schema": "bank-sample-verification-v1",
+  "sample": "2025 英语二 / four passages / questions 21–40",
+  "source": {
+    "path": "D:\\DSH\\DSH Workplace\\课程与项目\\考研英语Agent\\考研英语Agent\\kaoyan-review\\bank-batch-20261025\\2025-en2\\source.pdf",
+    "sha256": "02766ba3ffa1de0c3c5f7c48b266ec83cf17cd5ba3bf7a86700a3f8f8dba80cf",
+    "physical_pages": 144,
+    "extractor": "pypdf",
+    "extractor_version": "6.21.2"
+  },
+  "snapshot": {
+    "path": "server/data/demo_snapshot.json",
+    "sha256": "e3de672d02ffc936724ecd2524c10afaf34787b161e9a233f3322fc8a8374459",
+    "counts": {
+      "passages": 72,
+      "sentences": 1362,
+      "questions": 360,
+      "breakdowns": 6
+    }
+  },
+  "policy": {
+    "normalization": "Remove Unicode whitespace; expand ﬀ ﬁ ﬂ ﬃ ﬄ ﬅ ﬆ only. Decode literal \\n in snapshot passage as line breaks. No punctuation/case/fuzzy/semantic normalization.",
+    "approval": "NOT teacher/manual approved; matches mean source transcription consistency only, not correctness of source explanations.",
+    "not_checked": [
+      "steps_json",
+      "pedagogical validity",
+      "copyright/license",
+      "visual glyph correctness beyond extracted text"
+    ],
+    "pending": "Unestablished evidence is pending, never approved. Original question content and explanation-section answers are independently extracted."
+  },
+  "summary": {
+    "match": 18,
+    "mismatch": 0,
+    "pending": 2
+  },
+  "check_totals": {
+    "passage": {
+      "match": 20
+    },
+    "question": {
+      "match": 20
+    },
+    "options": {
+      "match": 80
+    },
+    "answer": {
+      "match": 18,
+      "pending": 2
+    },
+    "analysis": {
+      "match": 72,
+      "pending": 8
+    }
+  },
+  "questions": [
+    {
+      "id": "bank_2025_2_1_q21",
+      "number": 21,
+      "passage_id": "bank_2025_2_1",
+      "status": "match",
+      "checks": {
+        "passage": {
+          "status": "match",
+          "pages": [
+            4
+          ],
+          "snapshot_normalized_sha256": "ada894230251cf099dbffa7104b5bd987384df757a877497780bedf507da47dc",
+          "source_normalized_sha256": "ada894230251cf099dbffa7104b5bd987384df757a877497780bedf507da47dc"
+        },
+        "question": {
+          "status": "match",
+          "pages": [
+            4
+          ],
+          "snapshot_normalized_sha256": "29a5187fc97eb8d756d624c8d787dd7ad4e0665b1bd6ffeef22334f5769303dd",
+          "source_normalized_sha256": "29a5187fc97eb8d756d624c8d787dd7ad4e0665b1bd6ffeef22334f5769303dd"
+        },
+        "options": {
+          "A": {
+            "status": "match",
+            "pages": [
+              4
+            ],
+            "snapshot_normalized_sha256": "4ebe7ebf455b76f07fb2b2b5a85db0778848e23cffa0a6dd78e4d45dee7bc522",
+            "source_normalized_sha256": "4ebe7ebf455b76f07fb2b2b5a85db0778848e23cffa0a6dd78e4d45dee7bc522"
+          },
+          "B": {
+            "status": "match",
+            "pages": [
+              4
+            ],
+            "snapshot_normalized_sha256": "7584679cb120ca615c36ac7b0c6a49397fcd285b8f0c5b030ec9edb4a007e261",
+            "source_normalized_sha256": "7584679cb120ca615c36ac7b0c6a49397fcd285b8f0c5b030ec9edb4a007e261"
+          },
+          "C": {
+            "status": "match",
+            "pages": [
+              4
+            ],
+            "snapshot_normalized_sha256": "28674e7310783559057b73106e6bec480fac6ede9629a34c6611d0a38aac9681",
+            "source_normalized_sha256": "28674e7310783559057b73106e6bec480fac6ede9629a34c6611d0a38aac9681"
+          },
+          "D": {
+            "status": "match",
+            "pages": [
+              4
+            ],
+            "snapshot_normalized_sha256": "3a59c87d8549bf753077cb7958733976398a0f845baf30960f104a25913e15e5",
+            "source_normalized_sha256": "3a59c87d8549bf753077cb7958733976398a0f845baf30960f104a25913e15e5"
+          }
+        },
+        "answer": {
+          "status": "match",
+          "pages": [
+            43
+          ],
+          "snapshot": "B",
+          "source": "B",
+          "evidence": "【答案】 B （细节题）",
+          "binding": "unique numbered full stem + all four options + unique explicit answer on same page"
+        },
+        "analysis": {
+          "A": {
+            "status": "match",
+            "pages": [
+              43,
+              44
+            ],
+            "method": "full normalized explanation contained in answer-bound labelled option block; exact trapType",
+            "reason": "Full text found"
+          },
+          "B": {
+            "status": "match",
+            "pages": [
+              43,
+              44
+            ],
+            "method": "full normalized explanation contained in answer-bound labelled option block; exact trapType",
+            "reason": "Full text found"
+          },
+          "C": {
+            "status": "match",
+            "pages": [
+              43,
+              44
+            ],
+            "method": "full normalized explanation contained in answer-bound labelled option block; exact trapType",
+            "reason": "Full text found"
+          },
+          "D": {
+            "status": "match",
+            "pages": [
+              43,
+              44
+            ],
+            "method": "full normalized explanation contained in answer-bound labelled option block; exact trapType",
+            "reason": "Full text found"
+          }
+        }
+      }
+    },
+    {
+      "id": "bank_2025_2_1_q22",
+      "number": 22,
+      "passage_id": "bank_2025_2_1",
+      "status": "match",
+      "checks": {
+        "passage": {
+          "status": "match",
+          "pages": [
+            4
+          ],
+          "snapshot_normalized_sha256": "ada894230251cf099dbffa7104b5bd987384df757a877497780bedf507da47dc",
+          "source_normalized_sha256": "ada894230251cf099dbffa7104b5bd987384df757a877497780bedf507da47dc"
+        },
+        "question": {
+          "status": "match",
+          "pages": [
+            5
+          ],
+          "snapshot_normalized_sha256": "febee0677d7ae2708bed5ed11a5ce7f1ad0656166e05c287dc843f4f9f877abc",
+          "source_normalized_sha256": "febee0677d7ae2708bed5ed11a5ce7f1ad0656166e05c287dc843f4f9f877abc"
+        },
+        "options": {
+          "A": {
+            "status": "match",
+            "pages": [
+              5
+            ],
+            "snapshot_normalized_sha256": "16b57bc38ece9ee4c2e281454602dbd5a714d313d303de65f463b0ae990e2bd3",
+            "source_normalized_sha256": "16b57bc38ece9ee4c2e281454602dbd5a714d313d303de65f463b0ae990e2bd3"
+          },
+          "B": {
+            "status": "match",
+            "pages": [
+              5
+            ],
+            "snapshot_normalized_sha256": "191cf74323a404c439701c06d982415193d66fff4affd7fdef12b856f8e37358",
+            "source_normalized_sha256": "191cf74323a404c439701c06d982415193d66fff4affd7fdef12b856f8e37358"
+          },
+          "C": {
+            "status": "match",
+            "pages": [
+              5
+            ],
+            "snapshot_normalized_sha256": "a34a1a7f7df490e99587ade7e805af37b54dc9640420f9c041bc060d6055515f",
+            "source_normalized_sha256": "a34a1a7f7df490e99587ade7e805af37b54dc9640420f9c041bc060d6055515f"
+          },
+          "D": {
+            "status": "match",
+            "pages": [
+              5
+            ],
+            "snapshot_normalized_sha256": "4fa682ff5229d465e39749978fb9301d8a1d3d8b9459516e512af647b48ea85e",
+            "source_normalized_sha256": "4fa682ff5229d465e39749978fb9301d8a1d3d8b9459516e512af647b48ea85e"
+          }
+        },
+        "answer": {
+          "status": "match",
+          "pages": [
+            44
+          ],
+          "snapshot": "C",
+          "source": "C",
+          "evidence": "【答案】 C （细节题）",
+          "binding": "unique numbered full stem + all four options + unique explicit answer on same page"
+        },
+        "analysis": {
+          "A": {
+            "status": "match",
+            "pages": [
+              44,
+              45
+            ],
+            "method": "full normalized explanation contained in answer-bound labelled option block; exact trapType",
+            "reason": "Full text found"
+          },
+          "B": {
+            "status": "match",
+            "pages": [
+              44,
+              45
+            ],
+            "method": "full normalized explanation contained in answer-bound labelled option block; exact trapType",
+            "reason": "Full text found"
+          },
+          "C": {
+            "status": "match",
+            "pages": [
+              44,
+              45
+            ],
+            "method": "full normalized explanation contained in answer-bound labelled option block; exact trapType",
+            "reason": "Full text found"
+          },
+          "D": {
+            "status": "match",
+            "pages": [
+              44,
+              45
+            ],
+            "method": "full normalized explanation contained in answer-bound labelled option block; exact trapType",
+            "reason": "Full text found"
+          }
+        }
+      }
+    },
+    {
+      "id": "bank_2025_2_1_q23",
+      "number": 23,
+      "passage_id": "bank_2025_2_1",
+      "status": "match",
+      "checks": {
+        "passage": {
+          "status": "match",
+          "pages": [
+            4
+          ],
+          "snapshot_normalized_sha256": "ada894230251cf099dbffa7104b5bd987384df757a877497780bedf507da47dc",
+          "source_normalized_sha256": "ada894230251cf099dbffa7104b5bd987384df757a877497780bedf507da47dc"
+        },
+        "question": {
+          "status": "match",
+          "pages": [
+            5
+          ],
+          "snapshot_normalized_sha256": "3e2a8848cd676a1f7362c6f51c2b3c95e654415527e80bdf108869050d87cbf5",
+          "source_normalized_sha256": "3e2a8848cd676a1f7362c6f51c2b3c95e654415527e80bdf108869050d87cbf5"
+        },
+        "options": {
+          "A": {
+            "status": "match",
+            "pages": [
+              5
+            ],
+            "snapshot_normalized_sha256": "5aec4121c7c02224386622c4d16894088f7ffa67e03e83b0deb719179db9d388",
+            "source_normalized_sha256": "5aec4121c7c02224386622c4d16894088f7ffa67e03e83b0deb719179db9d388"
+          },
+          "B": {
+            "status": "match",
+            "pages": [
+              5
+            ],
+            "snapshot_normalized_sha256": "f468f93ad949fdc009eba86ccae0ffb4fa3194b3eb559199d2fcd7656b307630",
+            "source_normalized_sha256": "f468f93ad949fdc009eba86ccae0ffb4fa3194b3eb559199d2fcd7656b307630"
+          },
+          "C": {
+            "status": "match",
+            "pages": [
+              5
+            ],
+            "snapshot_normalized_sha256": "c33724baebe0de5e546e25daa6d099436a26ddcbaaaf13061395cb0ac93e4be3",
+            "source_normalized_sha256": "c33724baebe0de5e546e25daa6d099436a26ddcbaaaf13061395cb0ac93e4be3"
+          },
+          "D": {
+            "status": "match",
+            "pages": [
+              5
+            ],
+            "snapshot_normalized_sha256": "30083ffcf8b6faf699a4ef375c67b9c881b01c7b68fa1eb4b96b3e27dfbefd79",
+            "source_normalized_sha256": "30083ffcf8b6faf699a4ef375c67b9c881b01c7b68fa1eb4b96b3e27dfbefd79"
+          }
+        },
+        "answer": {
+          "status": "match",
+          "pages": [
+            45
+          ],
+          "snapshot": "A",
+          "source": "A",
+          "evidence": "【答案】 A （细节题）",
+          "binding": "unique numbered full stem + all four options + unique explicit answer on same page"
+        },
+        "analysis": {
+          "A": {
+            "status": "match",
+            "pages": [
+              45,
+              46
+            ],
+            "method": "full normalized explanation contained in answer-bound labelled option block; exact trapType",
+            "reason": "Full text found"
+          },
+          "B": {
+            "status": "match",
+            "pages": [
+              45,
+              46
+            ],
+            "method": "full normalized explanation contained in answer-bound labelled option block; exact trapType",
+            "reason": "Full text found"
+          },
+          "C": {
+            "status": "match",
+            "pages": [
+              45,
+              46
+            ],
+            "method": "full normalized explanation contained in answer-bound labelled option block; exact trapType",
+            "reason": "Full text found"
+          },
+          "D": {
+            "status": "match",
+            "pages": [
+              45,
+              46
+            ],
+            "method": "full normalized explanation contained in answer-bound labelled option block; exact trapType",
+            "reason": "Full text found"
+          }
+        }
+      }
+    },
+    {
+      "id": "bank_2025_2_1_q24",
+      "number": 24,
+      "passage_id": "bank_2025_2_1",
+      "status": "match",
+      "checks": {
+        "passage": {
+          "status": "match",
+          "pages": [
+            4
+          ],
+          "snapshot_normalized_sha256": "ada894230251cf099dbffa7104b5bd987384df757a877497780bedf507da47dc",
+          "source_normalized_sha256": "ada894230251cf099dbffa7104b5bd987384df757a877497780bedf507da47dc"
+        },
+        "question": {
+          "status": "match",
+          "pages": [
+            5
+          ],
+          "snapshot_normalized_sha256": "f16ae4f51b2444eabe7a833bdf6a8e1787bb5d899e0fcfd87fb36a1bde3669fc",
+          "source_normalized_sha256": "f16ae4f51b2444eabe7a833bdf6a8e1787bb5d899e0fcfd87fb36a1bde3669fc"
+        },
+        "options": {
+          "A": {
+            "status": "match",
+            "pages": [
+              5
+            ],
+            "snapshot_normalized_sha256": "5bac0826a2ef788227b25bebddcab27ae3bb2a1f69899c8de2a0e5906788beb5",
+            "source_normalized_sha256": "5bac0826a2ef788227b25bebddcab27ae3bb2a1f69899c8de2a0e5906788beb5"
+          },
+          "B": {
+            "status": "match",
+            "pages": [
+              5
+            ],
+            "snapshot_normalized_sha256": "8066a089929fa90e1d7f7b6a519db2bf929b756e83026c6276537d16039a938f",
+            "source_normalized_sha256": "8066a089929fa90e1d7f7b6a519db2bf929b756e83026c6276537d16039a938f"
+          },
+          "C": {
+            "status": "match",
+            "pages": [
+              5
+            ],
+            "snapshot_normalized_sha256": "ba6b8e182271d869b0f47f561f71f8f7f25fe56d3aef34ae20eae76c38070b6f",
+            "source_normalized_sha256": "ba6b8e182271d869b0f47f561f71f8f7f25fe56d3aef34ae20eae76c38070b6f"
+          },
+          "D": {
+            "status": "match",
+            "pages": [
+              5
+            ],
+            "snapshot_normalized_sha256": "058c94ef090ffc02adaf41bc10123e466bca68c3e407b153cfe605ea39d96af2",
+            "source_normalized_sha256": "058c94ef090ffc02adaf41bc10123e466bca68c3e407b153cfe605ea39d96af2"
+          }
+        },
+        "answer": {
+          "status": "match",
+          "pages": [
+            46
+          ],
+          "snapshot": "D",
+          "source": "D",
+          "evidence": "【答案】 D （细节题）",
+          "binding": "unique numbered full stem + all four options + unique explicit answer on same page"
+        },
+        "analysis": {
+          "A": {
+            "status": "match",
+            "pages": [
+              46,
+              47
+            ],
+            "method": "full normalized explanation contained in answer-bound labelled option block; exact trapType",
+            "reason": "Full text found"
+          },
+          "B": {
+            "status": "match",
+            "pages": [
+              46,
+              47
+            ],
+            "method": "full normalized explanation contained in answer-bound labelled option block; exact trapType",
+            "reason": "Full text found"
+          },
+          "C": {
+            "status": "match",
+            "pages": [
+              46,
+              47
+            ],
+            "method": "full normalized explanation contained in answer-bound labelled option block; exact trapType",
+            "reason": "Full text found"
+          },
+          "D": {
+            "status": "match",
+            "pages": [
+              46,
+              47
+            ],
+            "method": "full normalized explanation contained in answer-bound labelled option block; exact trapType",
+            "reason": "Full text found"
+          }
+        }
+      }
+    },
+    {
+      "id": "bank_2025_2_1_q25",
+      "number": 25,
+      "passage_id": "bank_2025_2_1",
+      "status": "match",
+      "checks": {
+        "passage": {
+          "status": "match",
+          "pages": [
+            4
+          ],
+          "snapshot_normalized_sha256": "ada894230251cf099dbffa7104b5bd987384df757a877497780bedf507da47dc",
+          "source_normalized_sha256": "ada894230251cf099dbffa7104b5bd987384df757a877497780bedf507da47dc"
+        },
+        "question": {
+          "status": "match",
+          "pages": [
+            5
+          ],
+          "snapshot_normalized_sha256": "2a5eafa26f21cc1fd8e4dfeabb2bc7b092121ab669dc3027a989ded43c0bbfd9",
+          "source_normalized_sha256": "2a5eafa26f21cc1fd8e4dfeabb2bc7b092121ab669dc3027a989ded43c0bbfd9"
+        },
+        "options": {
+          "A": {
+            "status": "match",
+            "pages": [
+              5
+            ],
+            "snapshot_normalized_sha256": "41aeccfbc392170abb4e0432cbff7576f3d64bc19ba9d6b84be4e3b2148c5bdd",
+            "source_normalized_sha256": "41aeccfbc392170abb4e0432cbff7576f3d64bc19ba9d6b84be4e3b2148c5bdd"
+          },
+          "B": {
+            "status": "match",
+            "pages": [
+              5
+            ],
+            "snapshot_normalized_sha256": "ff3e02721182fcfb629d4378f0826511940ac241336f0bf5218ce546a1b2376f",
+            "source_normalized_sha256": "ff3e02721182fcfb629d4378f0826511940ac241336f0bf5218ce546a1b2376f"
+          },
+          "C": {
+            "status": "match",
+            "pages": [
+              5
+            ],
+            "snapshot_normalized_sha256": "5abe448ef023f802561eb9df0ceb64c0afb2e019e54dd6a6f4612acba9b8dc7b",
+            "source_normalized_sha256": "5abe448ef023f802561eb9df0ceb64c0afb2e019e54dd6a6f4612acba9b8dc7b"
+          },
+          "D": {
+            "status": "match",
+            "pages": [
+              5
+            ],
+            "snapshot_normalized_sha256": "c44a3bf1d4125fa5d35bdd47258b4c7440dcab10573ae3e7f23062512f47f0f0",
+            "source_normalized_sha256": "c44a3bf1d4125fa5d35bdd47258b4c7440dcab10573ae3e7f23062512f47f0f0"
+          }
+        },
+        "answer": {
+          "status": "match",
+          "pages": [
+            47
+          ],
+          "snapshot": "A",
+          "source": "A",
+          "evidence": "【答案】 A （推断题）",
+          "binding": "unique numbered full stem + all four options + unique explicit answer on same page"
+        },
+        "analysis": {
+          "A": {
+            "status": "match",
+            "pages": [
+              47,
+              48
+            ],
+            "method": "full normalized explanation contained in answer-bound labelled option block; exact trapType",
+            "reason": "Full text found"
+          },
+          "B": {
+            "status": "match",
+            "pages": [
+              47,
+              48
+            ],
+            "method": "full normalized explanation contained in answer-bound labelled option block; exact trapType",
+            "reason": "Full text found"
+          },
+          "C": {
+            "status": "match",
+            "pages": [
+              47,
+              48
+            ],
+            "method": "full normalized explanation contained in answer-bound labelled option block; exact trapType",
+            "reason": "Full text found"
+          },
+          "D": {
+            "status": "match",
+            "pages": [
+              47,
+              48
+            ],
+            "method": "full normalized explanation contained in answer-bound labelled option block; exact trapType",
+            "reason": "Full text found"
+          }
+        }
+      }
+    },
+    {
+      "id": "bank_2025_2_2_q26",
+      "number": 26,
+      "passage_id": "bank_2025_2_2",
+      "status": "match",
+      "checks": {
+        "passage": {
+          "status": "match",
+          "pages": [
+            5,
+            6
+          ],
+          "snapshot_normalized_sha256": "55e27802c1d7564c8169f672f7790eb24a9c14792a216acd35883af66aa0813f",
+          "source_normalized_sha256": "55e27802c1d7564c8169f672f7790eb24a9c14792a216acd35883af66aa0813f"
+        },
+        "question": {
+          "status": "match",
+          "pages": [
+            6
+          ],
+          "snapshot_normalized_sha256": "e49e3e175f4367a521d16d3261accd8734e7e98050dd6d169855c033955378ef",
+          "source_normalized_sha256": "e49e3e175f4367a521d16d3261accd8734e7e98050dd6d169855c033955378ef"
+        },
+        "options": {
+          "A": {
+            "status": "match",
+            "pages": [
+              6
+            ],
+            "snapshot_normalized_sha256": "aac4efdd8ca31e90859d12ef6f65a237ffad44479202f289a05694a531ac022e",
+            "source_normalized_sha256": "aac4efdd8ca31e90859d12ef6f65a237ffad44479202f289a05694a531ac022e"
+          },
+          "B": {
+            "status": "match",
+            "pages": [
+              6
+            ],
+            "snapshot_normalized_sha256": "f36fa428c079184ae932a2d1f9cd665ae5df5115299edea5502c7921d5d5ad6a",
+            "source_normalized_sha256": "f36fa428c079184ae932a2d1f9cd665ae5df5115299edea5502c7921d5d5ad6a"
+          },
+          "C": {
+            "status": "match",
+            "pages": [
+              6
+            ],
+            "snapshot_normalized_sha256": "b996ef10d102a52faef3d2ae87cb8f5aca2616e9e63c62e44c69692e9138d1fb",
+            "source_normalized_sha256": "b996ef10d102a52faef3d2ae87cb8f5aca2616e9e63c62e44c69692e9138d1fb"
+          },
+          "D": {
+            "status": "match",
+            "pages": [
+              6
+            ],
+            "snapshot_normalized_sha256": "c132eea78bc777a744c569bf4971f66c5df4caa27e006ccbada21fec3073da81",
+            "source_normalized_sha256": "c132eea78bc777a744c569bf4971f66c5df4caa27e006ccbada21fec3073da81"
+          }
+        },
+        "answer": {
+          "status": "match",
+          "pages": [
+            57
+          ],
+          "snapshot": "B",
+          "source": "B",
+          "evidence": "【答案】 B （细节题）",
+          "binding": "unique numbered full stem + all four options + unique explicit answer on same page"
+        },
+        "analysis": {
+          "A": {
+            "status": "match",
+            "pages": [
+              57,
+              58
+            ],
+            "method": "full normalized explanation contained in answer-bound labelled option block; exact trapType",
+            "reason": "Full text found"
+          },
+          "B": {
+            "status": "match",
+            "pages": [
+              57,
+              58
+            ],
+            "method": "full normalized explanation contained in answer-bound labelled option block; exact trapType",
+            "reason": "Full text found"
+          },
+          "C": {
+            "status": "match",
+            "pages": [
+              57,
+              58
+            ],
+            "method": "full normalized explanation contained in answer-bound labelled option block; exact trapType",
+            "reason": "Full text found"
+          },
+          "D": {
+            "status": "match",
+            "pages": [
+              57,
+              58
+            ],
+            "method": "full normalized explanation contained in answer-bound labelled option block; exact trapType",
+            "reason": "Full text found"
+          }
+        }
+      }
+    },
+    {
+      "id": "bank_2025_2_2_q27",
+      "number": 27,
+      "passage_id": "bank_2025_2_2",
+      "status": "match",
+      "checks": {
+        "passage": {
+          "status": "match",
+          "pages": [
+            5,
+            6
+          ],
+          "snapshot_normalized_sha256": "55e27802c1d7564c8169f672f7790eb24a9c14792a216acd35883af66aa0813f",
+          "source_normalized_sha256": "55e27802c1d7564c8169f672f7790eb24a9c14792a216acd35883af66aa0813f"
+        },
+        "question": {
+          "status": "match",
+          "pages": [
+            6
+          ],
+          "snapshot_normalized_sha256": "1341da035ffe61fdad37891ae70fc27f4046b3a8e8f3309374a6431d1ce77558",
+          "source_normalized_sha256": "1341da035ffe61fdad37891ae70fc27f4046b3a8e8f3309374a6431d1ce77558"
+        },
+        "options": {
+          "A": {
+            "status": "match",
+            "pages": [
+              6
+            ],
+            "snapshot_normalized_sha256": "603cc216ecc77d919b120419da97603c84880d5e5eb9bfcd311f9c622077f446",
+            "source_normalized_sha256": "603cc216ecc77d919b120419da97603c84880d5e5eb9bfcd311f9c622077f446"
+          },
+          "B": {
+            "status": "match",
+            "pages": [
+              6
+            ],
+            "snapshot_normalized_sha256": "549d3a4fdf0c7e2bf1d6e55414c6748de563273487ed65379077bf94b06d1dbe",
+            "source_normalized_sha256": "549d3a4fdf0c7e2bf1d6e55414c6748de563273487ed65379077bf94b06d1dbe"
+          },
+          "C": {
+            "status": "match",
+            "pages": [
+              6
+            ],
+            "snapshot_normalized_sha256": "fbb052a9579acfa8b92e4461472b0f791548343651e9b9dcf1e49f1826a26b8c",
+            "source_normalized_sha256": "fbb052a9579acfa8b92e4461472b0f791548343651e9b9dcf1e49f1826a26b8c"
+          },
+          "D": {
+            "status": "match",
+            "pages": [
+              6
+            ],
+            "snapshot_normalized_sha256": "8aeb507340ecc427180f3cf351bf10cd5ce8e3d2f28362ab1e7e46b08780c91f",
+            "source_normalized_sha256": "8aeb507340ecc427180f3cf351bf10cd5ce8e3d2f28362ab1e7e46b08780c91f"
+          }
+        },
+        "answer": {
+          "status": "match",
+          "pages": [
+            58
+          ],
+          "snapshot": "C",
+          "source": "C",
+          "evidence": "【答案】 C （细节题）",
+          "binding": "unique numbered full stem + all four options + unique explicit answer on same page"
+        },
+        "analysis": {
+          "A": {
+            "status": "match",
+            "pages": [
+              58,
+              59
+            ],
+            "method": "full normalized explanation contained in answer-bound labelled option block; exact trapType",
+            "reason": "Full text found"
+          },
+          "B": {
+            "status": "match",
+            "pages": [
+              58,
+              59
+            ],
+            "method": "full normalized explanation contained in answer-bound labelled option block; exact trapType",
+            "reason": "Full text found"
+          },
+          "C": {
+            "status": "match",
+            "pages": [
+              58,
+              59
+            ],
+            "method": "full normalized explanation contained in answer-bound labelled option block; exact trapType",
+            "reason": "Full text found"
+          },
+          "D": {
+            "status": "match",
+            "pages": [
+              58,
+              59
+            ],
+            "method": "full normalized explanation contained in answer-bound labelled option block; exact trapType",
+            "reason": "Full text found"
+          }
+        }
+      }
+    },
+    {
+      "id": "bank_2025_2_2_q28",
+      "number": 28,
+      "passage_id": "bank_2025_2_2",
+      "status": "match",
+      "checks": {
+        "passage": {
+          "status": "match",
+          "pages": [
+            5,
+            6
+          ],
+          "snapshot_normalized_sha256": "55e27802c1d7564c8169f672f7790eb24a9c14792a216acd35883af66aa0813f",
+          "source_normalized_sha256": "55e27802c1d7564c8169f672f7790eb24a9c14792a216acd35883af66aa0813f"
+        },
+        "question": {
+          "status": "match",
+          "pages": [
+            6
+          ],
+          "snapshot_normalized_sha256": "e0815715be0124c285d1b08299f78e4e5b7e7bb440405b4919f3d65d8c798f4d",
+          "source_normalized_sha256": "e0815715be0124c285d1b08299f78e4e5b7e7bb440405b4919f3d65d8c798f4d"
+        },
+        "options": {
+          "A": {
+            "status": "match",
+            "pages": [
+              6
+            ],
+            "snapshot_normalized_sha256": "44f979ecb1b6e07360d32bd71328950cac28283ca7312b07bb25e2934377d72b",
+            "source_normalized_sha256": "44f979ecb1b6e07360d32bd71328950cac28283ca7312b07bb25e2934377d72b"
+          },
+          "B": {
+            "status": "match",
+            "pages": [
+              6
+            ],
+            "snapshot_normalized_sha256": "1dfe5a76b9c4e5c68572abe65c55cab6962b1d91a18c37b0d81347df042bef5f",
+            "source_normalized_sha256": "1dfe5a76b9c4e5c68572abe65c55cab6962b1d91a18c37b0d81347df042bef5f"
+          },
+          "C": {
+            "status": "match",
+            "pages": [
+              6
+            ],
+            "snapshot_normalized_sha256": "7989ed6ce4c284a432d79d58586700175c3b170726716aac44090a8c45e92deb",
+            "source_normalized_sha256": "7989ed6ce4c284a432d79d58586700175c3b170726716aac44090a8c45e92deb"
+          },
+          "D": {
+            "status": "match",
+            "pages": [
+              6
+            ],
+            "snapshot_normalized_sha256": "bdccea3460c398b07f1cdbfdb4709e4d8c264c109c00e08d19c7f62a33e4bbf4",
+            "source_normalized_sha256": "bdccea3460c398b07f1cdbfdb4709e4d8c264c109c00e08d19c7f62a33e4bbf4"
+          }
+        },
+        "answer": {
+          "status": "match",
+          "pages": [
+            59
+          ],
+          "snapshot": "C",
+          "source": "C",
+          "evidence": "【答案】 C （细节题）",
+          "binding": "unique numbered full stem + all four options + unique explicit answer on same page"
+        },
+        "analysis": {
+          "A": {
+            "status": "match",
+            "pages": [
+              59,
+              60
+            ],
+            "method": "full normalized explanation contained in answer-bound labelled option block; exact trapType",
+            "reason": "Full text found"
+          },
+          "B": {
+            "status": "match",
+            "pages": [
+              59,
+              60
+            ],
+            "method": "full normalized explanation contained in answer-bound labelled option block; exact trapType",
+            "reason": "Full text found"
+          },
+          "C": {
+            "status": "match",
+            "pages": [
+              59,
+              60
+            ],
+            "method": "full normalized explanation contained in answer-bound labelled option block; exact trapType",
+            "reason": "Full text found"
+          },
+          "D": {
+            "status": "match",
+            "pages": [
+              59,
+              60
+            ],
+            "method": "full normalized explanation contained in answer-bound labelled option block; exact trapType",
+            "reason": "Full text found"
+          }
+        }
+      }
+    },
+    {
+      "id": "bank_2025_2_2_q29",
+      "number": 29,
+      "passage_id": "bank_2025_2_2",
+      "status": "match",
+      "checks": {
+        "passage": {
+          "status": "match",
+          "pages": [
+            5,
+            6
+          ],
+          "snapshot_normalized_sha256": "55e27802c1d7564c8169f672f7790eb24a9c14792a216acd35883af66aa0813f",
+          "source_normalized_sha256": "55e27802c1d7564c8169f672f7790eb24a9c14792a216acd35883af66aa0813f"
+        },
+        "question": {
+          "status": "match",
+          "pages": [
+            6
+          ],
+          "snapshot_normalized_sha256": "9f5a3eb5247b8e0c68379a6edf48b989d861f05ced749f7cbdc223c92a4f25b8",
+          "source_normalized_sha256": "9f5a3eb5247b8e0c68379a6edf48b989d861f05ced749f7cbdc223c92a4f25b8"
+        },
+        "options": {
+          "A": {
+            "status": "match",
+            "pages": [
+              6
+            ],
+            "snapshot_normalized_sha256": "951b45d69747210f8d5118ed1eb59e8e0d1093b2ed93f294436953ea62bb82ae",
+            "source_normalized_sha256": "951b45d69747210f8d5118ed1eb59e8e0d1093b2ed93f294436953ea62bb82ae"
+          },
+          "B": {
+            "status": "match",
+            "pages": [
+              6
+            ],
+            "snapshot_normalized_sha256": "a7a68761b534e766634879c4133617efa5489d2d4b9c9f5c803d9c47059cef02",
+            "source_normalized_sha256": "a7a68761b534e766634879c4133617efa5489d2d4b9c9f5c803d9c47059cef02"
+          },
+          "C": {
+            "status": "match",
+            "pages": [
+              6
+            ],
+            "snapshot_normalized_sha256": "502afa55c1900ae6cdbb24291993e97b16cf21ed4110119745667cd136359a4a",
+            "source_normalized_sha256": "502afa55c1900ae6cdbb24291993e97b16cf21ed4110119745667cd136359a4a"
+          },
+          "D": {
+            "status": "match",
+            "pages": [
+              6
+            ],
+            "snapshot_normalized_sha256": "5189f26bc5a44d0e73c9c72e44c27e647e454273b0fc6391e47e4bbb9e62591a",
+            "source_normalized_sha256": "5189f26bc5a44d0e73c9c72e44c27e647e454273b0fc6391e47e4bbb9e62591a"
+          }
+        },
+        "answer": {
+          "status": "match",
+          "pages": [
+            60
+          ],
+          "snapshot": "B",
+          "source": "B",
+          "evidence": "【答案】 B （细节题）",
+          "binding": "unique numbered full stem + all four options + unique explicit answer on same page"
+        },
+        "analysis": {
+          "A": {
+            "status": "match",
+            "pages": [
+              60,
+              61
+            ],
+            "method": "full normalized explanation contained in answer-bound labelled option block; exact trapType",
+            "reason": "Full text found"
+          },
+          "B": {
+            "status": "match",
+            "pages": [
+              60,
+              61
+            ],
+            "method": "full normalized explanation contained in answer-bound labelled option block; exact trapType",
+            "reason": "Full text found"
+          },
+          "C": {
+            "status": "match",
+            "pages": [
+              60,
+              61
+            ],
+            "method": "full normalized explanation contained in answer-bound labelled option block; exact trapType",
+            "reason": "Full text found"
+          },
+          "D": {
+            "status": "match",
+            "pages": [
+              60,
+              61
+            ],
+            "method": "full normalized explanation contained in answer-bound labelled option block; exact trapType",
+            "reason": "Full text found"
+          }
+        }
+      }
+    },
+    {
+      "id": "bank_2025_2_2_q30",
+      "number": 30,
+      "passage_id": "bank_2025_2_2",
+      "status": "match",
+      "checks": {
+        "passage": {
+          "status": "match",
+          "pages": [
+            5,
+            6
+          ],
+          "snapshot_normalized_sha256": "55e27802c1d7564c8169f672f7790eb24a9c14792a216acd35883af66aa0813f",
+          "source_normalized_sha256": "55e27802c1d7564c8169f672f7790eb24a9c14792a216acd35883af66aa0813f"
+        },
+        "question": {
+          "status": "match",
+          "pages": [
+            6
+          ],
+          "snapshot_normalized_sha256": "2a0096fa2deabe3febd5a11cd51a84cb0aeed9fdb827aee3f1bfca33ae2b79f8",
+          "source_normalized_sha256": "2a0096fa2deabe3febd5a11cd51a84cb0aeed9fdb827aee3f1bfca33ae2b79f8"
+        },
+        "options": {
+          "A": {
+            "status": "match",
+            "pages": [
+              6
+            ],
+            "snapshot_normalized_sha256": "3d9db98671821ff30eaebb91506ac3dfffd1df353717a774addf2d611ea9cf98",
+            "source_normalized_sha256": "3d9db98671821ff30eaebb91506ac3dfffd1df353717a774addf2d611ea9cf98"
+          },
+          "B": {
+            "status": "match",
+            "pages": [
+              6
+            ],
+            "snapshot_normalized_sha256": "012506db8618b8c748bed7fc983938e6d3fdd9de5ff9e6b178c78ebf27284773",
+            "source_normalized_sha256": "012506db8618b8c748bed7fc983938e6d3fdd9de5ff9e6b178c78ebf27284773"
+          },
+          "C": {
+            "status": "match",
+            "pages": [
+              6
+            ],
+            "snapshot_normalized_sha256": "6c7098d35d13c07d5acd1ebecde2131f25a0b89717dbc0c26f4abd559dc0a443",
+            "source_normalized_sha256": "6c7098d35d13c07d5acd1ebecde2131f25a0b89717dbc0c26f4abd559dc0a443"
+          },
+          "D": {
+            "status": "match",
+            "pages": [
+              6
+            ],
+            "snapshot_normalized_sha256": "fea3d9412ab282f37ddfefe256562a3787e8957c6832d610d59a81d7e68f6e4f",
+            "source_normalized_sha256": "fea3d9412ab282f37ddfefe256562a3787e8957c6832d610d59a81d7e68f6e4f"
+          }
+        },
+        "answer": {
+          "status": "match",
+          "pages": [
+            61
+          ],
+          "snapshot": "C",
+          "source": "C",
+          "evidence": "【答案】 C （推断题）",
+          "binding": "unique numbered full stem + all four options + unique explicit answer on same page"
+        },
+        "analysis": {
+          "A": {
+            "status": "match",
+            "pages": [
+              61,
+              62
+            ],
+            "method": "full normalized explanation contained in answer-bound labelled option block; exact trapType",
+            "reason": "Full text found"
+          },
+          "B": {
+            "status": "match",
+            "pages": [
+              61,
+              62
+            ],
+            "method": "full normalized explanation contained in answer-bound labelled option block; exact trapType",
+            "reason": "Full text found"
+          },
+          "C": {
+            "status": "match",
+            "pages": [
+              61,
+              62
+            ],
+            "method": "full normalized explanation contained in answer-bound labelled option block; exact trapType",
+            "reason": "Full text found"
+          },
+          "D": {
+            "status": "match",
+            "pages": [
+              61,
+              62
+            ],
+            "method": "full normalized explanation contained in answer-bound labelled option block; exact trapType",
+            "reason": "Full text found"
+          }
+        }
+      }
+    },
+    {
+      "id": "bank_2025_2_3_q31",
+      "number": 31,
+      "passage_id": "bank_2025_2_3",
+      "status": "pending",
+      "checks": {
+        "passage": {
+          "status": "match",
+          "pages": [
+            6,
+            7
+          ],
+          "snapshot_normalized_sha256": "ecd2516cffd17777cf14a64c20fe385903f47c1fdbcbf7208420ce8c2cf47976",
+          "source_normalized_sha256": "ecd2516cffd17777cf14a64c20fe385903f47c1fdbcbf7208420ce8c2cf47976"
+        },
+        "question": {
+          "status": "match",
+          "pages": [
+            7
+          ],
+          "snapshot_normalized_sha256": "ca39716eec04b7648ffd6eaf52ca641d029df700f285ec3caf0eebb6e50d2150",
+          "source_normalized_sha256": "ca39716eec04b7648ffd6eaf52ca641d029df700f285ec3caf0eebb6e50d2150"
+        },
+        "options": {
+          "A": {
+            "status": "match",
+            "pages": [
+              7
+            ],
+            "snapshot_normalized_sha256": "12ac22d7603579ecb9b95f5287986a76b71d83b5aa6e5028f94e97a8ec15b64c",
+            "source_normalized_sha256": "12ac22d7603579ecb9b95f5287986a76b71d83b5aa6e5028f94e97a8ec15b64c"
+          },
+          "B": {
+            "status": "match",
+            "pages": [
+              7
+            ],
+            "snapshot_normalized_sha256": "ec9d0cdba2d1abe710b52e3a2ed2dc30ddef571773d44531bdc7d6a92e67bf9f",
+            "source_normalized_sha256": "ec9d0cdba2d1abe710b52e3a2ed2dc30ddef571773d44531bdc7d6a92e67bf9f"
+          },
+          "C": {
+            "status": "match",
+            "pages": [
+              7
+            ],
+            "snapshot_normalized_sha256": "5d31c2dcd00d531ab35da32dd467bc5925a5c9300e9d2b8c1174859aa6fc437e",
+            "source_normalized_sha256": "5d31c2dcd00d531ab35da32dd467bc5925a5c9300e9d2b8c1174859aa6fc437e"
+          },
+          "D": {
+            "status": "match",
+            "pages": [
+              7
+            ],
+            "snapshot_normalized_sha256": "8d1a57e48ef0cab0cf696fb7cc835c45e30528864a90cf5488094a56e2850c3a",
+            "source_normalized_sha256": "8d1a57e48ef0cab0cf696fb7cc835c45e30528864a90cf5488094a56e2850c3a"
+          }
+        },
+        "answer": {
+          "status": "pending",
+          "pages": [
+            72
+          ],
+          "reason": "No unique same-page question/answer binding; cross-page or multiple-answer layout",
+          "evidence": {
+            "pages_with_numbered_question": [
+              72
+            ],
+            "explicit_answer_labels": [
+              {
+                "page": 72,
+                "labels": []
+              }
+            ],
+            "adjacent_page_answer_labels": [
+              {
+                "page": 73,
+                "labels": [
+                  "【答案】 A （细节题）",
+                  "【答案】 B （细节题）"
+                ]
+              }
+            ]
+          }
+        },
+        "analysis": {
+          "A": {
+            "status": "pending",
+            "pages": [
+              72
+            ],
+            "reason": "No unambiguous answer-bound option analysis block"
+          },
+          "B": {
+            "status": "pending",
+            "pages": [
+              72
+            ],
+            "reason": "No unambiguous answer-bound option analysis block"
+          },
+          "C": {
+            "status": "pending",
+            "pages": [
+              72
+            ],
+            "reason": "No unambiguous answer-bound option analysis block"
+          },
+          "D": {
+            "status": "pending",
+            "pages": [
+              72
+            ],
+            "reason": "No unambiguous answer-bound option analysis block"
+          }
+        }
+      }
+    },
+    {
+      "id": "bank_2025_2_3_q32",
+      "number": 32,
+      "passage_id": "bank_2025_2_3",
+      "status": "pending",
+      "checks": {
+        "passage": {
+          "status": "match",
+          "pages": [
+            6,
+            7
+          ],
+          "snapshot_normalized_sha256": "ecd2516cffd17777cf14a64c20fe385903f47c1fdbcbf7208420ce8c2cf47976",
+          "source_normalized_sha256": "ecd2516cffd17777cf14a64c20fe385903f47c1fdbcbf7208420ce8c2cf47976"
+        },
+        "question": {
+          "status": "match",
+          "pages": [
+            7
+          ],
+          "snapshot_normalized_sha256": "52d49ca4355d526c727bc5c2ef683762d3e6164ac5c34095dc8d45a59da15571",
+          "source_normalized_sha256": "52d49ca4355d526c727bc5c2ef683762d3e6164ac5c34095dc8d45a59da15571"
+        },
+        "options": {
+          "A": {
+            "status": "match",
+            "pages": [
+              7
+            ],
+            "snapshot_normalized_sha256": "c2f8e188da8a6ab06a318ccd015187e42e04bfe27eb103a7998ed3b2b5b4ce28",
+            "source_normalized_sha256": "c2f8e188da8a6ab06a318ccd015187e42e04bfe27eb103a7998ed3b2b5b4ce28"
+          },
+          "B": {
+            "status": "match",
+            "pages": [
+              7
+            ],
+            "snapshot_normalized_sha256": "411d29eb2983c0c9597cf1c4dabde7b301b571121b7cf41c7b787e19a26b51e9",
+            "source_normalized_sha256": "411d29eb2983c0c9597cf1c4dabde7b301b571121b7cf41c7b787e19a26b51e9"
+          },
+          "C": {
+            "status": "match",
+            "pages": [
+              7
+            ],
+            "snapshot_normalized_sha256": "f871dfcab10ff4075bc84f57b584b37f83f96348fa86dfd8b62b5b68dac48b26",
+            "source_normalized_sha256": "f871dfcab10ff4075bc84f57b584b37f83f96348fa86dfd8b62b5b68dac48b26"
+          },
+          "D": {
+            "status": "match",
+            "pages": [
+              7
+            ],
+            "snapshot_normalized_sha256": "22425d05cac730ca3c22af778010207d16b9fee08b74fe9c8e0b18916e82703f",
+            "source_normalized_sha256": "22425d05cac730ca3c22af778010207d16b9fee08b74fe9c8e0b18916e82703f"
+          }
+        },
+        "answer": {
+          "status": "pending",
+          "pages": [
+            73
+          ],
+          "reason": "No unique same-page question/answer binding; cross-page or multiple-answer layout",
+          "evidence": {
+            "pages_with_numbered_question": [
+              73
+            ],
+            "explicit_answer_labels": [
+              {
+                "page": 73,
+                "labels": [
+                  "【答案】 A （细节题）",
+                  "【答案】 B （细节题）"
+                ]
+              }
+            ],
+            "adjacent_page_answer_labels": [
+              {
+                "page": 74,
+                "labels": [
+                  "【答案】 A （细节题）"
+                ]
+              }
+            ]
+          }
+        },
+        "analysis": {
+          "A": {
+            "status": "pending",
+            "pages": [
+              73
+            ],
+            "reason": "No unambiguous answer-bound option analysis block"
+          },
+          "B": {
+            "status": "pending",
+            "pages": [
+              73
+            ],
+            "reason": "No unambiguous answer-bound option analysis block"
+          },
+          "C": {
+            "status": "pending",
+            "pages": [
+              73
+            ],
+            "reason": "No unambiguous answer-bound option analysis block"
+          },
+          "D": {
+            "status": "pending",
+            "pages": [
+              73
+            ],
+            "reason": "No unambiguous answer-bound option analysis block"
+          }
+        }
+      }
+    },
+    {
+      "id": "bank_2025_2_3_q33",
+      "number": 33,
+      "passage_id": "bank_2025_2_3",
+      "status": "match",
+      "checks": {
+        "passage": {
+          "status": "match",
+          "pages": [
+            6,
+            7
+          ],
+          "snapshot_normalized_sha256": "ecd2516cffd17777cf14a64c20fe385903f47c1fdbcbf7208420ce8c2cf47976",
+          "source_normalized_sha256": "ecd2516cffd17777cf14a64c20fe385903f47c1fdbcbf7208420ce8c2cf47976"
+        },
+        "question": {
+          "status": "match",
+          "pages": [
+            7
+          ],
+          "snapshot_normalized_sha256": "08121c6ab4e617f42536e3110a2460cb34b56721bcded9893a4eb87f648a74e3",
+          "source_normalized_sha256": "08121c6ab4e617f42536e3110a2460cb34b56721bcded9893a4eb87f648a74e3"
+        },
+        "options": {
+          "A": {
+            "status": "match",
+            "pages": [
+              7
+            ],
+            "snapshot_normalized_sha256": "222e444a788d2da912f9266f5a9d6bdba135289aa18ec4f8cc95fde82cf8e246",
+            "source_normalized_sha256": "222e444a788d2da912f9266f5a9d6bdba135289aa18ec4f8cc95fde82cf8e246"
+          },
+          "B": {
+            "status": "match",
+            "pages": [
+              7
+            ],
+            "snapshot_normalized_sha256": "c6373156dc54764ea4daf06f5696d949b47c6e2b8137db6b1a2647cbc97c9def",
+            "source_normalized_sha256": "c6373156dc54764ea4daf06f5696d949b47c6e2b8137db6b1a2647cbc97c9def"
+          },
+          "C": {
+            "status": "match",
+            "pages": [
+              7
+            ],
+            "snapshot_normalized_sha256": "69b911b555dd7928fdeb161217a0695e98bb5c2e08767e645c022f92f066ad7b",
+            "source_normalized_sha256": "69b911b555dd7928fdeb161217a0695e98bb5c2e08767e645c022f92f066ad7b"
+          },
+          "D": {
+            "status": "match",
+            "pages": [
+              7
+            ],
+            "snapshot_normalized_sha256": "24304205e59f501153e97be543d57ad992b7efc7417fc8f88902ea29736339d4",
+            "source_normalized_sha256": "24304205e59f501153e97be543d57ad992b7efc7417fc8f88902ea29736339d4"
+          }
+        },
+        "answer": {
+          "status": "match",
+          "pages": [
+            74
+          ],
+          "snapshot": "A",
+          "source": "A",
+          "evidence": "【答案】 A （细节题）",
+          "binding": "unique numbered full stem + all four options + unique explicit answer on same page"
+        },
+        "analysis": {
+          "A": {
+            "status": "match",
+            "pages": [
+              74,
+              75
+            ],
+            "method": "full normalized explanation contained in answer-bound labelled option block; exact trapType",
+            "reason": "Full text found"
+          },
+          "B": {
+            "status": "match",
+            "pages": [
+              74,
+              75
+            ],
+            "method": "full normalized explanation contained in answer-bound labelled option block; exact trapType",
+            "reason": "Full text found"
+          },
+          "C": {
+            "status": "match",
+            "pages": [
+              74,
+              75
+            ],
+            "method": "full normalized explanation contained in answer-bound labelled option block; exact trapType",
+            "reason": "Full text found"
+          },
+          "D": {
+            "status": "match",
+            "pages": [
+              74,
+              75
+            ],
+            "method": "full normalized explanation contained in answer-bound labelled option block; exact trapType",
+            "reason": "Full text found"
+          }
+        }
+      }
+    },
+    {
+      "id": "bank_2025_2_3_q34",
+      "number": 34,
+      "passage_id": "bank_2025_2_3",
+      "status": "match",
+      "checks": {
+        "passage": {
+          "status": "match",
+          "pages": [
+            6,
+            7
+          ],
+          "snapshot_normalized_sha256": "ecd2516cffd17777cf14a64c20fe385903f47c1fdbcbf7208420ce8c2cf47976",
+          "source_normalized_sha256": "ecd2516cffd17777cf14a64c20fe385903f47c1fdbcbf7208420ce8c2cf47976"
+        },
+        "question": {
+          "status": "match",
+          "pages": [
+            8
+          ],
+          "snapshot_normalized_sha256": "434f460d49a8b6002c4c11c8ea358463e9d4d191f908100b88d13eef2ac0f596",
+          "source_normalized_sha256": "434f460d49a8b6002c4c11c8ea358463e9d4d191f908100b88d13eef2ac0f596"
+        },
+        "options": {
+          "A": {
+            "status": "match",
+            "pages": [
+              8
+            ],
+            "snapshot_normalized_sha256": "fe1d641fa816c9a728e9a937979445d078dc38f7afcd71986fa221bdc4556c5a",
+            "source_normalized_sha256": "fe1d641fa816c9a728e9a937979445d078dc38f7afcd71986fa221bdc4556c5a"
+          },
+          "B": {
+            "status": "match",
+            "pages": [
+              8
+            ],
+            "snapshot_normalized_sha256": "f660ac46dacff7bb6efb2087b1ca14d1d6324eb56e4e9e6485bdb47c3925e94f",
+            "source_normalized_sha256": "f660ac46dacff7bb6efb2087b1ca14d1d6324eb56e4e9e6485bdb47c3925e94f"
+          },
+          "C": {
+            "status": "match",
+            "pages": [
+              8
+            ],
+            "snapshot_normalized_sha256": "90c4e48c79804dd897f6d665f3e15105e449d8df04bf5b9722111f64a3e0c818",
+            "source_normalized_sha256": "90c4e48c79804dd897f6d665f3e15105e449d8df04bf5b9722111f64a3e0c818"
+          },
+          "D": {
+            "status": "match",
+            "pages": [
+              8
+            ],
+            "snapshot_normalized_sha256": "e7949bfbfc448da188edeadc41ed464172eddd4bdc4e7185d1672701de0d27ae",
+            "source_normalized_sha256": "e7949bfbfc448da188edeadc41ed464172eddd4bdc4e7185d1672701de0d27ae"
+          }
+        },
+        "answer": {
+          "status": "match",
+          "pages": [
+            75
+          ],
+          "snapshot": "B",
+          "source": "B",
+          "evidence": "【答案】 B （细节题）",
+          "binding": "unique numbered full stem + all four options + unique explicit answer on same page"
+        },
+        "analysis": {
+          "A": {
+            "status": "match",
+            "pages": [
+              75,
+              76
+            ],
+            "method": "full normalized explanation contained in answer-bound labelled option block; exact trapType",
+            "reason": "Full text found"
+          },
+          "B": {
+            "status": "match",
+            "pages": [
+              75,
+              76
+            ],
+            "method": "full normalized explanation contained in answer-bound labelled option block; exact trapType",
+            "reason": "Full text found"
+          },
+          "C": {
+            "status": "match",
+            "pages": [
+              75,
+              76
+            ],
+            "method": "full normalized explanation contained in answer-bound labelled option block; exact trapType",
+            "reason": "Full text found"
+          },
+          "D": {
+            "status": "match",
+            "pages": [
+              75,
+              76
+            ],
+            "method": "full normalized explanation contained in answer-bound labelled option block; exact trapType",
+            "reason": "Full text found"
+          }
+        }
+      }
+    },
+    {
+      "id": "bank_2025_2_3_q35",
+      "number": 35,
+      "passage_id": "bank_2025_2_3",
+      "status": "match",
+      "checks": {
+        "passage": {
+          "status": "match",
+          "pages": [
+            6,
+            7
+          ],
+          "snapshot_normalized_sha256": "ecd2516cffd17777cf14a64c20fe385903f47c1fdbcbf7208420ce8c2cf47976",
+          "source_normalized_sha256": "ecd2516cffd17777cf14a64c20fe385903f47c1fdbcbf7208420ce8c2cf47976"
+        },
+        "question": {
+          "status": "match",
+          "pages": [
+            8
+          ],
+          "snapshot_normalized_sha256": "adead3521fbabcc6208c06251a1ee7dbbdf0590e888d2893b657000282f5f3ac",
+          "source_normalized_sha256": "adead3521fbabcc6208c06251a1ee7dbbdf0590e888d2893b657000282f5f3ac"
+        },
+        "options": {
+          "A": {
+            "status": "match",
+            "pages": [
+              8
+            ],
+            "snapshot_normalized_sha256": "a2119764c745830b72fe0ec51b36b51aed7b536111ad1dae0e52e52c5232a9c4",
+            "source_normalized_sha256": "a2119764c745830b72fe0ec51b36b51aed7b536111ad1dae0e52e52c5232a9c4"
+          },
+          "B": {
+            "status": "match",
+            "pages": [
+              8
+            ],
+            "snapshot_normalized_sha256": "4fb17dce716fe8400261ac665d3e776a1cc20d7f3fbcf46a66bfad8cfc518eb9",
+            "source_normalized_sha256": "4fb17dce716fe8400261ac665d3e776a1cc20d7f3fbcf46a66bfad8cfc518eb9"
+          },
+          "C": {
+            "status": "match",
+            "pages": [
+              8
+            ],
+            "snapshot_normalized_sha256": "d651fe1a998f74fbd87a0f3b6e7f70e37e162e92c654aee233bffd6d3d4ff054",
+            "source_normalized_sha256": "d651fe1a998f74fbd87a0f3b6e7f70e37e162e92c654aee233bffd6d3d4ff054"
+          },
+          "D": {
+            "status": "match",
+            "pages": [
+              8
+            ],
+            "snapshot_normalized_sha256": "fbb8b437b3f5e490c823d9da898f2b071caa56db22bf00ae9fbbe46c0e3a03c0",
+            "source_normalized_sha256": "fbb8b437b3f5e490c823d9da898f2b071caa56db22bf00ae9fbbe46c0e3a03c0"
+          }
+        },
+        "answer": {
+          "status": "match",
+          "pages": [
+            76
+          ],
+          "snapshot": "D",
+          "source": "D",
+          "evidence": "【答案】 D （细节题）",
+          "binding": "unique numbered full stem + all four options + unique explicit answer on same page"
+        },
+        "analysis": {
+          "A": {
+            "status": "match",
+            "pages": [
+              76,
+              77
+            ],
+            "method": "full normalized explanation contained in answer-bound labelled option block; exact trapType",
+            "reason": "Full text found"
+          },
+          "B": {
+            "status": "match",
+            "pages": [
+              76,
+              77
+            ],
+            "method": "full normalized explanation contained in answer-bound labelled option block; exact trapType",
+            "reason": "Full text found"
+          },
+          "C": {
+            "status": "match",
+            "pages": [
+              76,
+              77
+            ],
+            "method": "full normalized explanation contained in answer-bound labelled option block; exact trapType",
+            "reason": "Full text found"
+          },
+          "D": {
+            "status": "match",
+            "pages": [
+              76,
+              77
+            ],
+            "method": "full normalized explanation contained in answer-bound labelled option block; exact trapType",
+            "reason": "Full text found"
+          }
+        }
+      }
+    },
+    {
+      "id": "bank_2025_2_4_q36",
+      "number": 36,
+      "passage_id": "bank_2025_2_4",
+      "status": "match",
+      "checks": {
+        "passage": {
+          "status": "match",
+          "pages": [
+            8
+          ],
+          "snapshot_normalized_sha256": "14f82af960132f227ada7f04c82e0e4fdba9a2a7e89a7496b6ac83b4d33f4059",
+          "source_normalized_sha256": "14f82af960132f227ada7f04c82e0e4fdba9a2a7e89a7496b6ac83b4d33f4059"
+        },
+        "question": {
+          "status": "match",
+          "pages": [
+            9
+          ],
+          "snapshot_normalized_sha256": "357e9ee9eb4184c5070b0bc15556476e97bfe87c0cb76da96461833186cdd105",
+          "source_normalized_sha256": "357e9ee9eb4184c5070b0bc15556476e97bfe87c0cb76da96461833186cdd105"
+        },
+        "options": {
+          "A": {
+            "status": "match",
+            "pages": [
+              9
+            ],
+            "snapshot_normalized_sha256": "6369f0b214a8375305366a0a6c49888f43f32c4f6d6226c5702655876a5c7d3e",
+            "source_normalized_sha256": "6369f0b214a8375305366a0a6c49888f43f32c4f6d6226c5702655876a5c7d3e"
+          },
+          "B": {
+            "status": "match",
+            "pages": [
+              9
+            ],
+            "snapshot_normalized_sha256": "f8c4c69299c1ed5aa14cac50850507e7a77360624cd694d2c2849be9e74dec50",
+            "source_normalized_sha256": "f8c4c69299c1ed5aa14cac50850507e7a77360624cd694d2c2849be9e74dec50"
+          },
+          "C": {
+            "status": "match",
+            "pages": [
+              9
+            ],
+            "snapshot_normalized_sha256": "a9ec2a61677be38e7a6148a399b7aef25b2b09de9cf98dd1411b301ff3cd64f7",
+            "source_normalized_sha256": "a9ec2a61677be38e7a6148a399b7aef25b2b09de9cf98dd1411b301ff3cd64f7"
+          },
+          "D": {
+            "status": "match",
+            "pages": [
+              9
+            ],
+            "snapshot_normalized_sha256": "db78158b96321c1ce618e9b5845e4677ea0dcebcbd50fd743d48fc0a4626c5eb",
+            "source_normalized_sha256": "db78158b96321c1ce618e9b5845e4677ea0dcebcbd50fd743d48fc0a4626c5eb"
+          }
+        },
+        "answer": {
+          "status": "match",
+          "pages": [
+            86
+          ],
+          "snapshot": "C",
+          "source": "C",
+          "evidence": "【答案】 C （细节题）",
+          "binding": "unique numbered full stem + all four options + unique explicit answer on same page"
+        },
+        "analysis": {
+          "A": {
+            "status": "match",
+            "pages": [
+              86,
+              87
+            ],
+            "method": "full normalized explanation contained in answer-bound labelled option block; exact trapType",
+            "reason": "Full text found"
+          },
+          "B": {
+            "status": "match",
+            "pages": [
+              86,
+              87
+            ],
+            "method": "full normalized explanation contained in answer-bound labelled option block; exact trapType",
+            "reason": "Full text found"
+          },
+          "C": {
+            "status": "match",
+            "pages": [
+              86,
+              87
+            ],
+            "method": "full normalized explanation contained in answer-bound labelled option block; exact trapType",
+            "reason": "Full text found"
+          },
+          "D": {
+            "status": "match",
+            "pages": [
+              86,
+              87
+            ],
+            "method": "full normalized explanation contained in answer-bound labelled option block; exact trapType",
+            "reason": "Full text found"
+          }
+        }
+      }
+    },
+    {
+      "id": "bank_2025_2_4_q37",
+      "number": 37,
+      "passage_id": "bank_2025_2_4",
+      "status": "match",
+      "checks": {
+        "passage": {
+          "status": "match",
+          "pages": [
+            8
+          ],
+          "snapshot_normalized_sha256": "14f82af960132f227ada7f04c82e0e4fdba9a2a7e89a7496b6ac83b4d33f4059",
+          "source_normalized_sha256": "14f82af960132f227ada7f04c82e0e4fdba9a2a7e89a7496b6ac83b4d33f4059"
+        },
+        "question": {
+          "status": "match",
+          "pages": [
+            9
+          ],
+          "snapshot_normalized_sha256": "203baf4747e7df526a9aff5607d80d7ced0775a7b524bfb686b8f8ebd319cab2",
+          "source_normalized_sha256": "203baf4747e7df526a9aff5607d80d7ced0775a7b524bfb686b8f8ebd319cab2"
+        },
+        "options": {
+          "A": {
+            "status": "match",
+            "pages": [
+              9
+            ],
+            "snapshot_normalized_sha256": "578b9696f17e19e4580ce0f2efa78c4c44176f1ae30addb61499a41146cbe883",
+            "source_normalized_sha256": "578b9696f17e19e4580ce0f2efa78c4c44176f1ae30addb61499a41146cbe883"
+          },
+          "B": {
+            "status": "match",
+            "pages": [
+              9
+            ],
+            "snapshot_normalized_sha256": "b5b424aa386499d7fb0816439afc92c368f1c6ff24496cef7514f697d8bd7d80",
+            "source_normalized_sha256": "b5b424aa386499d7fb0816439afc92c368f1c6ff24496cef7514f697d8bd7d80"
+          },
+          "C": {
+            "status": "match",
+            "pages": [
+              9
+            ],
+            "snapshot_normalized_sha256": "5d85971c1c44edb81e4ec52e6c9c3dbc9fd0f23da3dac459a7ec2b2d12f83c08",
+            "source_normalized_sha256": "5d85971c1c44edb81e4ec52e6c9c3dbc9fd0f23da3dac459a7ec2b2d12f83c08"
+          },
+          "D": {
+            "status": "match",
+            "pages": [
+              9
+            ],
+            "snapshot_normalized_sha256": "e11d9daedb7277747780941e718cdaa7e576d8bfeeae93fb28a58afaa5f3068e",
+            "source_normalized_sha256": "e11d9daedb7277747780941e718cdaa7e576d8bfeeae93fb28a58afaa5f3068e"
+          }
+        },
+        "answer": {
+          "status": "match",
+          "pages": [
+            87
+          ],
+          "snapshot": "D",
+          "source": "D",
+          "evidence": "【答案】 D （推断题）",
+          "binding": "unique numbered full stem + all four options + unique explicit answer on same page"
+        },
+        "analysis": {
+          "A": {
+            "status": "match",
+            "pages": [
+              87,
+              88
+            ],
+            "method": "full normalized explanation contained in answer-bound labelled option block; exact trapType",
+            "reason": "Full text found"
+          },
+          "B": {
+            "status": "match",
+            "pages": [
+              87,
+              88
+            ],
+            "method": "full normalized explanation contained in answer-bound labelled option block; exact trapType",
+            "reason": "Full text found"
+          },
+          "C": {
+            "status": "match",
+            "pages": [
+              87,
+              88
+            ],
+            "method": "full normalized explanation contained in answer-bound labelled option block; exact trapType",
+            "reason": "Full text found"
+          },
+          "D": {
+            "status": "match",
+            "pages": [
+              87,
+              88
+            ],
+            "method": "full normalized explanation contained in answer-bound labelled option block; exact trapType",
+            "reason": "Full text found"
+          }
+        }
+      }
+    },
+    {
+      "id": "bank_2025_2_4_q38",
+      "number": 38,
+      "passage_id": "bank_2025_2_4",
+      "status": "match",
+      "checks": {
+        "passage": {
+          "status": "match",
+          "pages": [
+            8
+          ],
+          "snapshot_normalized_sha256": "14f82af960132f227ada7f04c82e0e4fdba9a2a7e89a7496b6ac83b4d33f4059",
+          "source_normalized_sha256": "14f82af960132f227ada7f04c82e0e4fdba9a2a7e89a7496b6ac83b4d33f4059"
+        },
+        "question": {
+          "status": "match",
+          "pages": [
+            9
+          ],
+          "snapshot_normalized_sha256": "691951cc4fbde72ffa6829669b56d6030db60eaf01ade9bf086903fb35919819",
+          "source_normalized_sha256": "691951cc4fbde72ffa6829669b56d6030db60eaf01ade9bf086903fb35919819"
+        },
+        "options": {
+          "A": {
+            "status": "match",
+            "pages": [
+              9
+            ],
+            "snapshot_normalized_sha256": "a7269c66cb7b2ea1c11f407d098c198f205c6448cbeeeabc0563a9b0fde8a3bb",
+            "source_normalized_sha256": "a7269c66cb7b2ea1c11f407d098c198f205c6448cbeeeabc0563a9b0fde8a3bb"
+          },
+          "B": {
+            "status": "match",
+            "pages": [
+              9
+            ],
+            "snapshot_normalized_sha256": "8cade3d9b651572156547320b6f641d67f670abe8d988dfed824b590518985e3",
+            "source_normalized_sha256": "8cade3d9b651572156547320b6f641d67f670abe8d988dfed824b590518985e3"
+          },
+          "C": {
+            "status": "match",
+            "pages": [
+              9
+            ],
+            "snapshot_normalized_sha256": "32ad0adf3f7d4d568b51b9cbdc60dff1c73eac56b0bd1ca8815766c62db77e1a",
+            "source_normalized_sha256": "32ad0adf3f7d4d568b51b9cbdc60dff1c73eac56b0bd1ca8815766c62db77e1a"
+          },
+          "D": {
+            "status": "match",
+            "pages": [
+              9
+            ],
+            "snapshot_normalized_sha256": "d3dfb6326e7b27f0995f0051f24d2e0b49a8acf964027ec5c4a090f1a0e133f7",
+            "source_normalized_sha256": "d3dfb6326e7b27f0995f0051f24d2e0b49a8acf964027ec5c4a090f1a0e133f7"
+          }
+        },
+        "answer": {
+          "status": "match",
+          "pages": [
+            88
+          ],
+          "snapshot": "A",
+          "source": "A",
+          "evidence": "【答案】 A （细节题）",
+          "binding": "unique numbered full stem + all four options + unique explicit answer on same page"
+        },
+        "analysis": {
+          "A": {
+            "status": "match",
+            "pages": [
+              88,
+              89
+            ],
+            "method": "full normalized explanation contained in answer-bound labelled option block; exact trapType",
+            "reason": "Full text found"
+          },
+          "B": {
+            "status": "match",
+            "pages": [
+              88,
+              89
+            ],
+            "method": "full normalized explanation contained in answer-bound labelled option block; exact trapType",
+            "reason": "Full text found"
+          },
+          "C": {
+            "status": "match",
+            "pages": [
+              88,
+              89
+            ],
+            "method": "full normalized explanation contained in answer-bound labelled option block; exact trapType",
+            "reason": "Full text found"
+          },
+          "D": {
+            "status": "match",
+            "pages": [
+              88,
+              89
+            ],
+            "method": "full normalized explanation contained in answer-bound labelled option block; exact trapType",
+            "reason": "Full text found"
+          }
+        }
+      }
+    },
+    {
+      "id": "bank_2025_2_4_q39",
+      "number": 39,
+      "passage_id": "bank_2025_2_4",
+      "status": "match",
+      "checks": {
+        "passage": {
+          "status": "match",
+          "pages": [
+            8
+          ],
+          "snapshot_normalized_sha256": "14f82af960132f227ada7f04c82e0e4fdba9a2a7e89a7496b6ac83b4d33f4059",
+          "source_normalized_sha256": "14f82af960132f227ada7f04c82e0e4fdba9a2a7e89a7496b6ac83b4d33f4059"
+        },
+        "question": {
+          "status": "match",
+          "pages": [
+            9
+          ],
+          "snapshot_normalized_sha256": "fa75a79f8386f246f141807f35b11ca1de3ec6d96e4d028f058e645137bc30de",
+          "source_normalized_sha256": "fa75a79f8386f246f141807f35b11ca1de3ec6d96e4d028f058e645137bc30de"
+        },
+        "options": {
+          "A": {
+            "status": "match",
+            "pages": [
+              9
+            ],
+            "snapshot_normalized_sha256": "9b28352e8c8c64dff270875900fe02b837b1392778b0773875828828e4acd26b",
+            "source_normalized_sha256": "9b28352e8c8c64dff270875900fe02b837b1392778b0773875828828e4acd26b"
+          },
+          "B": {
+            "status": "match",
+            "pages": [
+              9
+            ],
+            "snapshot_normalized_sha256": "d9e7991efca1ed92dfd161484993c34f3290b38e33a49e273910051134c51c8f",
+            "source_normalized_sha256": "d9e7991efca1ed92dfd161484993c34f3290b38e33a49e273910051134c51c8f"
+          },
+          "C": {
+            "status": "match",
+            "pages": [
+              9
+            ],
+            "snapshot_normalized_sha256": "e9b2547b82217439295d841cbab60e444236f5765ef819fa17f30d09c517a2d0",
+            "source_normalized_sha256": "e9b2547b82217439295d841cbab60e444236f5765ef819fa17f30d09c517a2d0"
+          },
+          "D": {
+            "status": "match",
+            "pages": [
+              9
+            ],
+            "snapshot_normalized_sha256": "8ea87a3f676854096a14aea254d5b1b413f58b2e3b9a2591f1193975c3c2bd48",
+            "source_normalized_sha256": "8ea87a3f676854096a14aea254d5b1b413f58b2e3b9a2591f1193975c3c2bd48"
+          }
+        },
+        "answer": {
+          "status": "match",
+          "pages": [
+            89
+          ],
+          "snapshot": "D",
+          "source": "D",
+          "evidence": "【答案】 D （例证目的题）",
+          "binding": "unique numbered full stem + all four options + unique explicit answer on same page"
+        },
+        "analysis": {
+          "A": {
+            "status": "match",
+            "pages": [
+              89,
+              90
+            ],
+            "method": "full normalized explanation contained in answer-bound labelled option block; exact trapType",
+            "reason": "Full text found"
+          },
+          "B": {
+            "status": "match",
+            "pages": [
+              89,
+              90
+            ],
+            "method": "full normalized explanation contained in answer-bound labelled option block; exact trapType",
+            "reason": "Full text found"
+          },
+          "C": {
+            "status": "match",
+            "pages": [
+              89,
+              90
+            ],
+            "method": "full normalized explanation contained in answer-bound labelled option block; exact trapType",
+            "reason": "Full text found"
+          },
+          "D": {
+            "status": "match",
+            "pages": [
+              89,
+              90
+            ],
+            "method": "full normalized explanation contained in answer-bound labelled option block; exact trapType",
+            "reason": "Full text found"
+          }
+        }
+      }
+    },
+    {
+      "id": "bank_2025_2_4_q40",
+      "number": 40,
+      "passage_id": "bank_2025_2_4",
+      "status": "match",
+      "checks": {
+        "passage": {
+          "status": "match",
+          "pages": [
+            8
+          ],
+          "snapshot_normalized_sha256": "14f82af960132f227ada7f04c82e0e4fdba9a2a7e89a7496b6ac83b4d33f4059",
+          "source_normalized_sha256": "14f82af960132f227ada7f04c82e0e4fdba9a2a7e89a7496b6ac83b4d33f4059"
+        },
+        "question": {
+          "status": "match",
+          "pages": [
+            9
+          ],
+          "snapshot_normalized_sha256": "b4f215c50cc46eb6b7bc76d1407a740c810533496e18bc3b70ef953ff3edd696",
+          "source_normalized_sha256": "b4f215c50cc46eb6b7bc76d1407a740c810533496e18bc3b70ef953ff3edd696"
+        },
+        "options": {
+          "A": {
+            "status": "match",
+            "pages": [
+              9
+            ],
+            "snapshot_normalized_sha256": "e633d70e2e314fe999d71abf9b09c015d688f261dd6c4361bb218928f4c5386c",
+            "source_normalized_sha256": "e633d70e2e314fe999d71abf9b09c015d688f261dd6c4361bb218928f4c5386c"
+          },
+          "B": {
+            "status": "match",
+            "pages": [
+              9
+            ],
+            "snapshot_normalized_sha256": "a86c3561d8031ea72853c11015ba50241f2abfd3de5ad3de094f32cd7d89a74e",
+            "source_normalized_sha256": "a86c3561d8031ea72853c11015ba50241f2abfd3de5ad3de094f32cd7d89a74e"
+          },
+          "C": {
+            "status": "match",
+            "pages": [
+              9
+            ],
+            "snapshot_normalized_sha256": "07bce3f4cab44f033cfab86b5a4e1d17b864d8a7b231ca2d6268dc761a11117e",
+            "source_normalized_sha256": "07bce3f4cab44f033cfab86b5a4e1d17b864d8a7b231ca2d6268dc761a11117e"
+          },
+          "D": {
+            "status": "match",
+            "pages": [
+              9
+            ],
+            "snapshot_normalized_sha256": "f89d41a593af426ea86436ca74b55cb7402796cb1fe81bf47b2976ed79f90409",
+            "source_normalized_sha256": "f89d41a593af426ea86436ca74b55cb7402796cb1fe81bf47b2976ed79f90409"
+          }
+        },
+        "answer": {
+          "status": "match",
+          "pages": [
+            90
+          ],
+          "snapshot": "D",
+          "source": "D",
+          "evidence": "【答案】 D （推断题）",
+          "binding": "unique numbered full stem + all four options + unique explicit answer on same page"
+        },
+        "analysis": {
+          "A": {
+            "status": "match",
+            "pages": [
+              90,
+              91
+            ],
+            "method": "full normalized explanation contained in answer-bound labelled option block; exact trapType",
+            "reason": "Full text found"
+          },
+          "B": {
+            "status": "match",
+            "pages": [
+              90,
+              91
+            ],
+            "method": "full normalized explanation contained in answer-bound labelled option block; exact trapType",
+            "reason": "Full text found"
+          },
+          "C": {
+            "status": "match",
+            "pages": [
+              90,
+              91
+            ],
+            "method": "full normalized explanation contained in answer-bound labelled option block; exact trapType",
+            "reason": "Full text found"
+          },
+          "D": {
+            "status": "match",
+            "pages": [
+              90,
+              91
+            ],
+            "method": "full normalized explanation contained in answer-bound labelled option block; exact trapType",
+            "reason": "Full text found"
+          }
+        }
+      }
+    }
+  ]
+}
